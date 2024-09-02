@@ -21,3 +21,13 @@ a {
   text-decoration: none;
   color: #007bff;
 }
+
+@media (max-width: 768px) { /* Adjust the breakpoint as needed */
+  ul {
+    margin: 0;
+  }
+
+  li {
+    margin-bottom: 20px;
+  }
+}
