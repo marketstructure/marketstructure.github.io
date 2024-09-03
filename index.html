@@ -19,19 +19,6 @@
         .form-group { margin-bottom: 15px; }
         button { margin-right: 10px; }
         h3 { margin-bottom: 10px; }
-        #feed-builder h2 { color: darkblue; }
-        .boxed-section {
-            border: 1px solid #ccc;
-            background-color: #f0f0f0;
-            padding: 15px;
-            margin-top: 20px;
-        }
-        .boxed-section h3 {
-            margin-top: 0;
-        }
-        .boxed-section button {
-            margin-top: 10px;
-        }
     </style>
 </head>
 <body>
@@ -60,7 +47,7 @@
         </div>
 
         <div class="subsection">
-            <h3>Enter your own feed</h3>
+            <h3>Enter your own RSS feed URL</h3>
             <div class="form-group">
                 <input type="text" id="new-feed" placeholder="Enter RSS feed URL">
                 <button onclick="addFeed()">Add Feed</button>
@@ -73,220 +60,274 @@
                 <input type="text" id="exclude-term" placeholder="Enter term to exclude">
                 <button onclick="addExcludedTerm()">Add Excluded Term</button>
             </div>
-        </div>
-
-        <div class="boxed-section">
             <div id="excluded-terms"></div>
         </div>
 
-        <div class="boxed-section">
-            <div id="feed-summary"></div>
-        </div>
+        <div id="feed-summary"></div>
+        <button onclick="clearAllFeeds()">Clear All Feeds</button>
     </div>
 
-   <script>
-    let feeds = [];
-    const excludedTerms = new Set();
+    <script>
+        let feeds = [];
+        let feedItems = [];
+        let hiddenItems = new Set();
+        let excludedTerms = new Set();
 
-    function loadFeeds() {
-        const storedFeeds = localStorage.getItem('feeds');
-        if (storedFeeds) {
-            feeds = JSON.parse(storedFeeds);
-        }
-        updateFeedList();
-        updateFeedSummary();
-        fetchAllFeeds();
-    }
-
-    function saveFeed() {
-        localStorage.setItem('feeds', JSON.stringify(feeds));
-    }
-
-    function addFeed() {
-        const newFeed = document.getElementById('new-feed').value.trim();
-        if (newFeed && !feeds.includes(newFeed)) {
-            feeds.push(newFeed);
-            saveFeed();
-            updateFeedList();
-            updateFeedSummary();
-            fetchFeed(newFeed);
-            document.getElementById('new-feed').value = '';
-        }
-    }
-
-    function removeFeed(index) {
-        feeds.splice(index, 1);
-        saveFeed();
-        updateFeedList();
-        updateFeedSummary();
-        fetchAllFeeds();
-    }
-
-    function clearAllFeeds() {
-        feeds = [];
-        saveFeed();
-        updateFeedList();
-        updateFeedSummary();
-        document.getElementById('feed-list').innerHTML = '';
-    }
-
-    function updateFeedList() {
-        const feedList = document.getElementById('feed-list');
-        feedList.innerHTML = '';
-        feeds.forEach((feed, index) => {
-            const li = document.createElement('li');
-            li.className = 'feed-item';
-            li.innerHTML = `
-                ${feed}
-                <button onclick="removeFeed(${index})">Remove</button>
-            `;
-            feedList.appendChild(li);
-        });
-    }
-
-    function generateFeed() {
-        const keywords = document.getElementById('keywords').value.trim();
-        const searchEngine = document.querySelector('input[name="search-engine"]:checked').value;
-        
-        if (keywords) {
-            let feedUrl;
-            if (searchEngine === 'google') {
-                feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en`;
-            } else {
-                feedUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(keywords)}&format=rss`;
+        function loadFeeds() {
+            const storedFeeds = localStorage.getItem('rssFeeds');
+            if (storedFeeds) {
+                feeds = JSON.parse(storedFeeds);
+                updateFeedSummary();
+                fetchFeeds();
             }
-            
-            document.getElementById('generated-feed').innerHTML = `
-                Generated feed URL: ${feedUrl}
-                <button onclick="addGeneratedFeed('${feedUrl}')">Add to feeds</button>
-            `;
-        }
-    }
 
-    function addGeneratedFeed(feedUrl) {
-        if (!feeds.includes(feedUrl)) {
-            feeds.push(feedUrl);
-            saveFeed();
-            updateFeedList();
+            const storedHiddenItems = localStorage.getItem('hiddenItems');
+            if (storedHiddenItems) {
+                hiddenItems = new Set(JSON.parse(storedHiddenItems));
+            }
+
+            const storedExcludedTerms = localStorage.getItem('excludedTerms');
+            if (storedExcludedTerms) {
+                excludedTerms = new Set(JSON.parse(storedExcludedTerms));
+                updateExcludedTerms();
+            }
+        }
+
+        function saveFeedsToStorage() {
+            localStorage.setItem('rssFeeds', JSON.stringify(feeds));
+        }
+
+        function saveHiddenItemsToStorage() {
+            localStorage.setItem('hiddenItems', JSON.stringify(Array.from(hiddenItems)));
+        }
+
+        function saveExcludedTermsToStorage() {
+            localStorage.setItem('excludedTerms', JSON.stringify(Array.from(excludedTerms)));
+        }
+
+        function addFeed() {
+            const feedUrl = document.getElementById('new-feed').value;
+            if (feedUrl && !feeds.includes(feedUrl)) {
+                feeds.push(feedUrl);
+                saveFeedsToStorage();
+                updateFeedSummary();
+                fetchFeeds();
+                document.getElementById('new-feed').value = '';
+            }
+        }
+
+        function updateFeedSummary() {
+            const summary = document.getElementById('feed-summary');
+            summary.innerHTML = '<h3>Current Feeds:</h3>';
+            if (feeds.length === 0) {
+                summary.innerHTML += '<p>No feeds added yet.</p>';
+            } else {
+                const ul = document.createElement('ul');
+                feeds.forEach((feed, index) => {
+                    const li = document.createElement('li');
+                    li.textContent = feed;
+                    const removeButton = document.createElement('button');
+                    removeButton.textContent = 'Remove';
+                    removeButton.onclick = () => removeFeed(index);
+                    li.appendChild(removeButton);
+                    ul.appendChild(li);
+                });
+                summary.appendChild(ul);
+            }
+        }
+
+        function removeFeed(index) {
+            feeds.splice(index, 1);
+            saveFeedsToStorage();
             updateFeedSummary();
-            fetchFeed(feedUrl);
+            fetchFeeds();
         }
-    }
 
-    function addExcludedTerm() {
-        const term = document.getElementById('exclude-term').value.trim().toLowerCase();
-        if (term && !excludedTerms.has(term)) {
-            excludedTerms.add(term);
-            updateExcludedTerms();
-            document.getElementById('exclude-term').value = '';
-            fetchAllFeeds();
+        function fetchFeeds() {
+            feedItems = [];
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.textContent = '';
+
+            if (feeds.length === 0) {
+                console.log('No feeds to fetch');
+                return;
+            }
+
+            console.log('Fetching feeds:', feeds);
+
+            const promises = feeds.map(feed => 
+                $.ajax({
+                    url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}`,
+                    dataType: 'json'
+                })
+            );
+
+            Promise.all(promises)
+                .then(results => {
+                    console.log('Fetched results:', results);
+                    results.forEach(data => {
+                        if (data.status === 'ok' && Array.isArray(data.items)) {
+                            feedItems = feedItems.concat(data.items);
+                        } else {
+                            console.error('Invalid data received:', data);
+                        }
+                    });
+                    processFeeds();
+                })
+                .catch(error => {
+                    console.error('Error fetching feeds:', error);
+                    errorMessage.textContent = 'Error fetching feeds. Please check the console for more details.';
+                });
         }
-    }
 
-    function removeExcludedTerm(term) {
-        excludedTerms.delete(term);
-        updateExcludedTerms();
-        fetchAllFeeds();
-    }
+        function processFeeds() {
+            console.log('Processing feeds. Total items:', feedItems.length);
 
-    function clearAllExclusions() {
-        excludedTerms.clear();
-        updateExcludedTerms();
-        fetchAllFeeds();
-    }
+            // Remove duplicates and apply exclusions
+            feedItems = feedItems.filter((item, index, self) =>
+                index === self.findIndex(t => t.title === item.title && t.link === item.link) &&
+                !Array.from(excludedTerms).some(term => item.title.toLowerCase().includes(term.toLowerCase()))
+            );
 
-    function updateFeedSummary() {
-        const summary = document.getElementById('feed-summary');
-        summary.innerHTML = '<h3>Current Feeds:</h3>';
-        if (feeds.length === 0) {
-            summary.innerHTML += '<p>No feeds added yet.</p>';
-        } else {
-            const ul = document.createElement('ul');
-            feeds.forEach((feed, index) => {
-                const li = document.createElement('li');
-                li.textContent = feed;
-                const removeButton = document.createElement('button');
-                removeButton.textContent = 'Remove';
-                removeButton.onclick = () => removeFeed(index);
-                li.appendChild(removeButton);
-                ul.appendChild(li);
-            });
-            summary.appendChild(ul);
+            // Sort by date
+            feedItems.sort((a, b) => moment(b.pubDate).diff(moment(a.pubDate)));
+
+            console.log('After processing. Total items:', feedItems.length);
+
+            displayFeeds();
         }
-        const clearButton = document.createElement('button');
-        clearButton.textContent = 'Clear All Feeds';
-        clearButton.onclick = clearAllFeeds;
-        summary.appendChild(clearButton);
-    }
 
-    function updateExcludedTerms() {
-        const excludedTermsDiv = document.getElementById('excluded-terms');
-        excludedTermsDiv.innerHTML = '<h3>Excluded Terms:</h3>';
-        if (excludedTerms.size === 0) {
-            excludedTermsDiv.innerHTML += '<p>No terms excluded.</p>';
-        } else {
-            const ul = document.createElement('ul');
-            excludedTerms.forEach(term => {
-                const li = document.createElement('li');
-                li.textContent = term;
-                const removeButton = document.createElement('button');
-                removeButton.textContent = 'Remove';
-                removeButton.onclick = () => removeExcludedTerm(term);
-                li.appendChild(removeButton);
-                ul.appendChild(li);
-            });
-            excludedTermsDiv.appendChild(ul);
-        }
-        const clearButton = document.createElement('button');
-        clearButton.textContent = 'Clear All Exclusions';
-        clearButton.onclick = clearAllExclusions;
-        excludedTermsDiv.appendChild(clearButton);
-    }
+        function displayFeeds() {
+            const feedList = document.getElementById('feed-list');
+            feedList.innerHTML = '';
 
-    function fetchAllFeeds() {
-        document.getElementById('feed-list').innerHTML = '';
-        feeds.forEach(feed => fetchFeed(feed));
-    }
+            if (feedItems.length === 0) {
+                feedList.innerHTML = '<p>No items to display. Make sure you have added valid RSS feeds.</p>';
+                return;
+            }
 
-    function fetchFeed(feedUrl) {
-        const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`;
-        
-        fetch(apiUrl)
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'ok') {
-                    displayFeedItems(data.items, feedUrl);
-                } else {
-                    console.error('Error fetching feed:', data.message);
-                }
-            })
-            .catch(error => console.error('Error:', error));
-    }
-
-    function displayFeedItems(items, feedUrl) {
-        const feedList = document.getElementById('feed-list');
-        
-        items.forEach(item => {
-            if (!isExcluded(item.title)) {
+            feedItems.forEach(item => {
                 const li = document.createElement('li');
                 li.className = 'feed-item';
+                if (hiddenItems.has(item.link)) {
+                    li.classList.add('hidden');
+                }
                 li.innerHTML = `
-                    <h3><a href="${item.link}" target="_blank">${item.title}</a></h3>
-                    <p>${item.description}</p>
-                    <small>Published: ${moment(item.pubDate).format('MMMM D, YYYY h:mm A')} | Source: ${feedUrl}</small>
+                    <strong>${item.title}</strong><br>
+                    <small>${moment(item.pubDate).format('MMMM D, YYYY')}</small><br>
+                    <a href="${item.link}" target="_blank">Read More</a>
+                    <button onclick="toggleItemVisibility(this, '${item.link}')">
+                        ${hiddenItems.has(item.link) ? 'Unhide' : 'Hide'}
+                    </button>
                 `;
                 feedList.appendChild(li);
+            });
+
+            console.log('Displayed feed items:', feedItems.length);
+        }
+
+        function toggleItemVisibility(button, itemLink) {
+            const listItem = button.closest('.feed-item');
+            if (hiddenItems.has(itemLink)) {
+                hiddenItems.delete(itemLink);
+                listItem.classList.remove('hidden');
+                button.textContent = 'Hide';
+            } else {
+                hiddenItems.add(itemLink);
+                listItem.classList.add('hidden');
+                button.textContent = 'Unhide';
             }
-        });
-    }
+            saveHiddenItemsToStorage();
+        }
 
-    function isExcluded(title) {
-        const lowerTitle = title.toLowerCase();
-        return Array.from(excludedTerms).some(term => lowerTitle.includes(term));
-    }
+        function generateFeed() {
+            const keywords = document.getElementById('keywords').value;
+            const searchEngine = document.querySelector('input[name="search-engine"]:checked').value;
+            let feedUrl = '';
 
-    // Load feeds on page load
-    loadFeeds();
-</script>
+            if (searchEngine === 'google') {
+                feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en`;
+            } else if (searchEngine === 'bing') {
+                feedUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(keywords)}&format=rss`;
+            }
+
+            const generatedFeedDiv = document.getElementById('generated-feed');
+            generatedFeedDiv.innerHTML = `
+                <p>Generated Feed URL: ${feedUrl}</p>
+                <button onclick="addGeneratedFeed('${feedUrl}')">Add to Feeds</button>
+            `;
+        }
+
+        function addGeneratedFeed(feedUrl) {
+            if (!feeds.includes(feedUrl)) {
+                feeds.push(feedUrl);
+                saveFeedsToStorage();
+                updateFeedSummary();
+                fetchFeeds();
+            }
+        }
+
+        function clearAllFeeds() {
+            feeds = [];
+            feedItems = [];
+            hiddenItems.clear();
+            saveFeedsToStorage();
+            saveHiddenItemsToStorage();
+            updateFeedSummary();
+            displayFeeds();
+        }
+
+        function addExcludedTerm() {
+            const term = document.getElementById('exclude-term').value.trim();
+            if (term && !excludedTerms.has(term)) {
+                excludedTerms.add(term);
+                saveExcludedTermsToStorage();
+                updateExcludedTerms();
+                document.getElementById('exclude-term').value = '';
+                fetchFeeds(); // Refresh feeds to apply new exclusion
+            }
+        }
+
+        function updateExcludedTerms() {
+            const excludedTermsDiv = document.getElementById('excluded-terms');
+            excludedTermsDiv.innerHTML = '<h4>Excluded Terms:</h4>';
+            if (excludedTerms.size === 0) {
+                excludedTermsDiv.innerHTML += '<p>No terms excluded.</p>';
+            } else {
+                const ul = document.createElement('ul');
+                excludedTerms.forEach(term => {
+                    const li = document.createElement('li');
+                    li.textContent = term;
+                    const removeButton = document.createElement('button');
+                    removeButton.textContent = 'Remove';
+                    removeButton.onclick = () => removeExcludedTerm(term);
+                    li.appendChild(removeButton);
+                    ul.appendChild(li);
+                });
+                excludedTermsDiv.appendChild(ul);
+                const clearButton = document.createElement('button');
+                clearButton.textContent = 'Clear All Exclusions';
+                clearButton.onclick = clearAllExclusions;
+                excludedTermsDiv.appendChild(clearButton);
+            }
+        }
+
+        function removeExcludedTerm(term) {
+            excludedTerms.delete(term);
+            saveExcludedTermsToStorage();
+            updateExcludedTerms();
+            fetchFeeds(); // Refresh feeds to apply updated exclusions
+        }
+
+        function clearAllExclusions() {
+            excludedTerms.clear();
+            saveExcludedTermsToStorage();
+            updateExcludedTerms();
+            fetchFeeds(); // Refresh feeds to apply updated exclusions
+        }
+
+        // Load feeds on page load
+        loadFeeds();
+    </script>
 </body>
 </html>
