@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amir's Information Aggregator v1.4</title>
+    <title>Amir's Information Aggregator v1.4 (Preview Version)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <style>
@@ -18,15 +18,17 @@
         .subsection { margin-top: 20px; }
         .form-group { margin-bottom: 15px; }
         button { margin-right: 10px; }
-        h2, h3 { margin-bottom: 10px; font-size: 1.2em; } /* Consistent subheading style */
+        h2 { margin-bottom: 15px; font-size: 1.5em; color: #00008B; }
+        h3 { margin-bottom: 10px; font-size: 1.2em; }
         .boxed-list { border: 1px solid #ccc; background-color: #f9f9f9; padding: 10px; margin-top: 10px; }
         .boxed-list ul { padding-left: 20px; }
         .boxed-list li { margin-bottom: 10px; }
         .boxed-list button { margin-left: 10px; }
+        .clear-button { display: block; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <h1>Amir's Information Aggregator v1.4</h1>
+    <h1>Amir's Information Aggregator v1.4 (Preview Version)</h1>
     <div id="error-message"></div>
     <ul id="feed-list"></ul>
 
@@ -42,18 +44,20 @@
                 <label>
                     <input type="radio" name="search-engine" value="bing"> Bing News
                 </label>
+                <label>
+                    <input type="radio" name="search-engine" value="both"> Both
+                </label>
             </div>
             <div class="form-group">
                 <input type="text" id="keywords" placeholder="Enter keywords">
                 <button onclick="generateFeed()">Generate Feed</button>
             </div>
-            <div id="generated-feed"></div>
         </div>
 
         <div class="subsection">
-            <h3>Enter your own RSS feed URL</h3>
+            <h3>Enter your own feed</h3>
             <div class="form-group">
-                <input type="text" id="new-feed" placeholder="Enter RSS feed URL">
+                <input type="text" id="new-feed" placeholder="Enter feed URL">
                 <button onclick="addFeed()">Add Feed</button>
             </div>
         </div>
@@ -68,7 +72,6 @@
         </div>
 
         <div id="feed-summary" class="boxed-list"></div>
-        <button onclick="clearAllFeeds()">Clear All Feeds</button>
     </div>
 
     <script>
@@ -77,43 +80,10 @@
         let hiddenItems = new Set();
         let excludedTerms = new Set();
 
-        function loadFeeds() {
-            const storedFeeds = localStorage.getItem('rssFeeds');
-            if (storedFeeds) {
-                feeds = JSON.parse(storedFeeds);
-                updateFeedSummary();
-                fetchFeeds();
-            }
-
-            const storedHiddenItems = localStorage.getItem('hiddenItems');
-            if (storedHiddenItems) {
-                hiddenItems = new Set(JSON.parse(storedHiddenItems));
-            }
-
-            const storedExcludedTerms = localStorage.getItem('excludedTerms');
-            if (storedExcludedTerms) {
-                excludedTerms = new Set(JSON.parse(storedExcludedTerms));
-                updateExcludedTerms();
-            }
-        }
-
-        function saveFeedsToStorage() {
-            localStorage.setItem('rssFeeds', JSON.stringify(feeds));
-        }
-
-        function saveHiddenItemsToStorage() {
-            localStorage.setItem('hiddenItems', JSON.stringify(Array.from(hiddenItems)));
-        }
-
-        function saveExcludedTermsToStorage() {
-            localStorage.setItem('excludedTerms', JSON.stringify(Array.from(excludedTerms)));
-        }
-
         function addFeed() {
             const feedUrl = document.getElementById('new-feed').value;
             if (feedUrl && !feeds.includes(feedUrl)) {
                 feeds.push(feedUrl);
-                saveFeedsToStorage();
                 updateFeedSummary();
                 fetchFeeds();
                 document.getElementById('new-feed').value = '';
@@ -138,11 +108,15 @@
                 });
                 summary.appendChild(ul);
             }
+            const clearButton = document.createElement('button');
+            clearButton.textContent = 'Clear All Feeds';
+            clearButton.onclick = clearAllFeeds;
+            clearButton.className = 'clear-button';
+            summary.appendChild(clearButton);
         }
 
         function removeFeed(index) {
             feeds.splice(index, 1);
-            saveFeedsToStorage();
             updateFeedSummary();
             fetchFeeds();
         }
@@ -159,29 +133,15 @@
 
             console.log('Fetching feeds:', feeds);
 
-            const promises = feeds.map(feed => 
-                $.ajax({
-                    url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}`,
-                    dataType: 'json'
-                })
-            );
+            // Simulated feed data for preview
+            const simulatedFeedData = [
+                { title: "Sample Article 1", pubDate: "2023-05-01T12:00:00Z", link: "#" },
+                { title: "Sample Article 2", pubDate: "2023-05-02T14:30:00Z", link: "#" },
+                { title: "Sample Article 3", pubDate: "2023-05-03T09:15:00Z", link: "#" }
+            ];
 
-            Promise.all(promises)
-                .then(results => {
-                    console.log('Fetched results:', results);
-                    results.forEach(data => {
-                        if (data.status === 'ok' && Array.isArray(data.items)) {
-                            feedItems = feedItems.concat(data.items);
-                        } else {
-                            console.error('Invalid data received:', data);
-                        }
-                    });
-                    processFeeds();
-                })
-                .catch(error => {
-                    console.error('Error fetching feeds:', error);
-                    errorMessage.textContent = 'Error fetching feeds. Please check the console for more details.';
-                });
+            feedItems = simulatedFeedData;
+            processFeeds();
         }
 
         function processFeeds() {
@@ -241,27 +201,26 @@
                 listItem.classList.add('hidden');
                 button.textContent = 'Unhide';
             }
-            saveHiddenItemsToStorage();
         }
 
         function generateFeed() {
             const keywords = document.getElementById('keywords').value;
             const searchEngine = document.querySelector('input[name="search-engine"]:checked').value;
-            let feedUrl = '';
-
-            if (searchEngine === 'google') {
-                feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en`;
-            } else if (searchEngine === 'bing') {
-                feedUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(keywords)}&format=rss`;
+            
+            if (searchEngine === 'both') {
+                let googleFeedUrl = `https://example.com/news/google?q=${encodeURIComponent(keywords)}`;
+                let bingFeedUrl = `https://example.com/news/bing?q=${encodeURIComponent(keywords)}`;
+                addGeneratedFeed(googleFeedUrl);
+                addGeneratedFeed(bingFeedUrl);
+            } else {
+                let feedUrl = `https://example.com/news/${searchEngine}?q=${encodeURIComponent(keywords)}`;
+                addGeneratedFeed(feedUrl);
             }
-
-            addGeneratedFeed(feedUrl);
         }
 
         function addGeneratedFeed(feedUrl) {
             if (!feeds.includes(feedUrl)) {
                 feeds.push(feedUrl);
-                saveFeedsToStorage();
                 updateFeedSummary();
                 fetchFeeds();
             }
@@ -271,8 +230,6 @@
             feeds = [];
             feedItems = [];
             hiddenItems.clear();
-            saveFeedsToStorage();
-            saveHiddenItemsToStorage();
             updateFeedSummary();
             displayFeeds();
         }
@@ -281,7 +238,6 @@
             const term = document.getElementById('exclude-term').value.trim();
             if (term && !excludedTerms.has(term)) {
                 excludedTerms.add(term);
-                saveExcludedTermsToStorage();
                 updateExcludedTerms();
                 document.getElementById('exclude-term').value = '';
                 fetchFeeds(); // Refresh feeds to apply new exclusion
@@ -305,29 +261,29 @@
                     ul.appendChild(li);
                 });
                 excludedTermsDiv.appendChild(ul);
-                const clearButton = document.createElement('button');
-                clearButton.textContent = 'Clear All Exclusions';
-                clearButton.onclick = clearAllExclusions;
-                excludedTermsDiv.appendChild(clearButton);
             }
+            const clearButton = document.createElement('button');
+            clearButton.textContent = 'Clear All Exclusions';
+            clearButton.onclick = clearAllExclusions;
+            clearButton.className = 'clear-button';
+            excludedTermsDiv.appendChild(clearButton);
         }
 
         function removeExcludedTerm(term) {
             excludedTerms.delete(term);
-            saveExcludedTermsToStorage();
             updateExcludedTerms();
             fetchFeeds(); // Refresh feeds to apply updated exclusions
         }
 
         function clearAllExclusions() {
             excludedTerms.clear();
-            saveExcludedTermsToStorage();
             updateExcludedTerms();
             fetchFeeds(); // Refresh feeds to apply updated exclusions
         }
 
-        // Load feeds on page load
-        loadFeeds();
+        // Initialize the page
+        updateFeedSummary();
+        updateExcludedTerms();
     </script>
 </body>
 </html>
