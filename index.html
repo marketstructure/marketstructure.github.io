@@ -12,6 +12,7 @@
         .feed-item { border-bottom: 1px solid #ccc; padding: 10px 0; }
         .feed-item button { margin-left: 10px; }
         .hidden { display: none; }
+        #feed-summary { margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -21,18 +22,61 @@
         <button onclick="addFeed()">Add Feed</button>
     </div>
     <ul id="feed-list"></ul>
+    <div id="feed-summary"></div>
 
     <script>
         let feeds = [];
         let feedItems = [];
 
+        function loadFeeds() {
+            const storedFeeds = localStorage.getItem('rssFeeds');
+            if (storedFeeds) {
+                feeds = JSON.parse(storedFeeds);
+                updateFeedSummary();
+                fetchFeeds();
+            }
+        }
+
+        function saveFeedsToStorage() {
+            localStorage.setItem('rssFeeds', JSON.stringify(feeds));
+        }
+
         function addFeed() {
             const feedUrl = document.getElementById('new-feed').value;
             if (feedUrl && !feeds.includes(feedUrl)) {
                 feeds.push(feedUrl);
+                saveFeedsToStorage();
+                updateFeedSummary();
                 fetchFeeds();
                 document.getElementById('new-feed').value = '';
             }
+        }
+
+        function updateFeedSummary() {
+            const summary = document.getElementById('feed-summary');
+            summary.innerHTML = '<h3>Current Feeds:</h3>';
+            if (feeds.length === 0) {
+                summary.innerHTML += '<p>No feeds added yet.</p>';
+            } else {
+                const ul = document.createElement('ul');
+                feeds.forEach((feed, index) => {
+                    const li = document.createElement('li');
+                    li.textContent = feed;
+                    const removeButton = document.createElement('button');
+                    removeButton.textContent = 'Remove';
+                    removeButton.onclick = () => removeFeed(index);
+                    li.appendChild(removeButton);
+                    ul.appendChild(li);
+                });
+                summary.appendChild(ul);
+            }
+        }
+
+        function removeFeed(index) {
+            feeds.splice(index, 1);
+            saveFeedsToStorage();
+            updateFeedSummary();
+            fetchFeeds();
         }
 
         function fetchFeeds() {
@@ -86,8 +130,8 @@
             button.parentElement.classList.add('hidden');
         }
 
-        // Initial fetch
-        fetchFeeds();
+        // Load feeds on page load
+        loadFeeds();
     </script>
 </body>
 </html>
