@@ -13,6 +13,7 @@
         .feed-item button { margin-left: 10px; }
         .hidden { display: none; }
         #feed-summary { margin-top: 20px; }
+        #error-message { color: red; }
     </style>
 </head>
 <body>
@@ -21,6 +22,7 @@
         <input type="text" id="new-feed" placeholder="Enter RSS feed URL">
         <button onclick="addFeed()">Add Feed</button>
     </div>
+    <div id="error-message"></div>
     <ul id="feed-list"></ul>
     <div id="feed-summary"></div>
 
@@ -81,6 +83,16 @@
 
         function fetchFeeds() {
             feedItems = [];
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.textContent = '';
+
+            if (feeds.length === 0) {
+                console.log('No feeds to fetch');
+                return;
+            }
+
+            console.log('Fetching feeds:', feeds);
+
             const promises = feeds.map(feed => 
                 $.ajax({
                     url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}`,
@@ -90,15 +102,25 @@
 
             Promise.all(promises)
                 .then(results => {
+                    console.log('Fetched results:', results);
                     results.forEach(data => {
-                        feedItems = feedItems.concat(data.items);
+                        if (data.status === 'ok' && Array.isArray(data.items)) {
+                            feedItems = feedItems.concat(data.items);
+                        } else {
+                            console.error('Invalid data received:', data);
+                        }
                     });
                     processFeeds();
                 })
-                .catch(error => console.error('Error fetching feeds:', error));
+                .catch(error => {
+                    console.error('Error fetching feeds:', error);
+                    errorMessage.textContent = 'Error fetching feeds. Please check the console for more details.';
+                });
         }
 
         function processFeeds() {
+            console.log('Processing feeds. Total items:', feedItems.length);
+
             // Remove duplicates
             feedItems = feedItems.filter((item, index, self) =>
                 index === self.findIndex(t => t.title === item.title && t.link === item.link)
@@ -107,12 +129,20 @@
             // Sort by date
             feedItems.sort((a, b) => moment(b.pubDate).diff(moment(a.pubDate)));
 
+            console.log('After processing. Total items:', feedItems.length);
+
             displayFeeds();
         }
 
         function displayFeeds() {
             const feedList = document.getElementById('feed-list');
             feedList.innerHTML = '';
+
+            if (feedItems.length === 0) {
+                feedList.innerHTML = '<p>No items to display. Make sure you have added valid RSS feeds.</p>';
+                return;
+            }
+
             feedItems.forEach(item => {
                 const li = document.createElement('li');
                 li.className = 'feed-item';
@@ -124,6 +154,8 @@
                 `;
                 feedList.appendChild(li);
             });
+
+            console.log('Displayed feed items:', feedItems.length);
         }
 
         function hideItem(button) {
