@@ -1,24 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Asian Themes & Market Structure</title>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSS Feed Aggregator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        #feed-list { list-style-type: none; padding: 0; }
+        .feed-item { border-bottom: 1px solid #ccc; padding: 10px 0; }
+        .feed-item button { margin-left: 10px; }
+        .hidden { display: none; }
+    </style>
 </head>
 <body>
-  <h1>Asian Themes & Market Structure</h1>
-  <p>This is a brief description of your landing page and its purpose.</p>
-  <ul>
-    <li><a href="indexing.html">Indexing: Providers and Strategies</a></li>
-    <li><a href="digital_assets.html">Digital Assets: From Niche to Norm</a></li>
-    <li><a href="pension_system.html">Pension System Developments and Dynamics</a></li>
-    <li><a href="esg_in_asia.html">ESG in Asia</a></li>
-    <li><a href="etf_landscape.html">The ETF Landscape</a></li>
-  </ul>
-  <h2>In the Spotlight</h2>
-  <ul>
-    <li><a href="evolving_allocations.html">Evolving Allocations: Global Investors and China</a></li>
-    <li><a href="renminbi_internationalisation.html">Renminbi Internationalisation 2.0</a></li>
-    <li><a href="consumer_sentiment.html">Consumer Sentiment</a></li>
-  </ul>
+    <h1>RSS Feed Aggregator</h1>
+    <div>
+        <input type="text" id="new-feed" placeholder="Enter RSS feed URL">
+        <button onclick="addFeed()">Add Feed</button>
+    </div>
+    <ul id="feed-list"></ul>
+
+    <script>
+        let feeds = [];
+        let feedItems = [];
+
+        function addFeed() {
+            const feedUrl = document.getElementById('new-feed').value;
+            if (feedUrl && !feeds.includes(feedUrl)) {
+                feeds.push(feedUrl);
+                fetchFeeds();
+                document.getElementById('new-feed').value = '';
+            }
+        }
+
+        function fetchFeeds() {
+            feedItems = [];
+            const promises = feeds.map(feed => 
+                $.ajax({
+                    url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}`,
+                    dataType: 'json'
+                })
+            );
+
+            Promise.all(promises)
+                .then(results => {
+                    results.forEach(data => {
+                        feedItems = feedItems.concat(data.items);
+                    });
+                    processFeeds();
+                })
+                .catch(error => console.error('Error fetching feeds:', error));
+        }
+
+        function processFeeds() {
+            // Remove duplicates
+            feedItems = feedItems.filter((item, index, self) =>
+                index === self.findIndex(t => t.title === item.title && t.link === item.link)
+            );
+
+            // Sort by date
+            feedItems.sort((a, b) => moment(b.pubDate).diff(moment(a.pubDate)));
+
+            displayFeeds();
+        }
+
+        function displayFeeds() {
+            const feedList = document.getElementById('feed-list');
+            feedList.innerHTML = '';
+            feedItems.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'feed-item';
+                li.innerHTML = `
+                    <strong>${item.title}</strong><br>
+                    <small>${moment(item.pubDate).format('MMMM D, YYYY')}</small><br>
+                    <a href="${item.link}" target="_blank">Read More</a>
+                    <button onclick="hideItem(this)">Hide</button>
+                `;
+                feedList.appendChild(li);
+            });
+        }
+
+        function hideItem(button) {
+            button.parentElement.classList.add('hidden');
+        }
+
+        // Initial fetch
+        fetchFeeds();
+    </script>
 </body>
 </html>
