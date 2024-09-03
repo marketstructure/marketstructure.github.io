@@ -271,7 +271,20 @@
             let feedUrl = '';
 
             if (searchEngine === 'google') {
-                feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en&sort=date`;
+                const now = moment();
+                let beforeDate;
+
+                if (timeframe === 'd') {
+                    beforeDate = now.subtract(1, 'day');
+                } else if (timeframe === 'w') {
+                    beforeDate = now.subtract(1, 'week');
+                } else if (timeframe === 'm') {
+                    beforeDate = now.subtract(1, 'month');
+                } else if (timeframe === 'y') {
+                    beforeDate = now.subtract(1, 'year');
+                }
+
+                feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en&before=${beforeDate.format('YYYY-MM-DD')}`;
             } else if (searchEngine === 'bing') {
                 feedUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(keywords)}&format=rss&setmkt=en-US&setlang=en-US&timefilter=${timeframe === 'd' ? 1 : timeframe === 'w' ? 7 : timeframe === 'm' ? 30 : 12}`;
             }
