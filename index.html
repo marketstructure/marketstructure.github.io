@@ -29,6 +29,7 @@
     <script>
         let feeds = [];
         let feedItems = [];
+        let hiddenItems = new Set();
 
         function loadFeeds() {
             const storedFeeds = localStorage.getItem('rssFeeds');
@@ -37,10 +38,19 @@
                 updateFeedSummary();
                 fetchFeeds();
             }
+
+            const storedHiddenItems = localStorage.getItem('hiddenItems');
+            if (storedHiddenItems) {
+                hiddenItems = new Set(JSON.parse(storedHiddenItems));
+            }
         }
 
         function saveFeedsToStorage() {
             localStorage.setItem('rssFeeds', JSON.stringify(feeds));
+        }
+
+        function saveHiddenItemsToStorage() {
+            localStorage.setItem('hiddenItems', JSON.stringify(Array.from(hiddenItems)));
         }
 
         function addFeed() {
@@ -146,11 +156,16 @@
             feedItems.forEach(item => {
                 const li = document.createElement('li');
                 li.className = 'feed-item';
+                if (hiddenItems.has(item.link)) {
+                    li.classList.add('hidden');
+                }
                 li.innerHTML = `
                     <strong>${item.title}</strong><br>
                     <small>${moment(item.pubDate).format('MMMM D, YYYY')}</small><br>
                     <a href="${item.link}" target="_blank">Read More</a>
-                    <button onclick="hideItem(this)">Hide</button>
+                    <button onclick="toggleItemVisibility(this, '${item.link}')">
+                        ${hiddenItems.has(item.link) ? 'Unhide' : 'Hide'}
+                    </button>
                 `;
                 feedList.appendChild(li);
             });
@@ -158,8 +173,18 @@
             console.log('Displayed feed items:', feedItems.length);
         }
 
-        function hideItem(button) {
-            button.parentElement.classList.add('hidden');
+        function toggleItemVisibility(button, itemLink) {
+            const listItem = button.closest('.feed-item');
+            if (hiddenItems.has(itemLink)) {
+                hiddenItems.delete(itemLink);
+                listItem.classList.remove('hidden');
+                button.textContent = 'Hide';
+            } else {
+                hiddenItems.add(itemLink);
+                listItem.classList.add('hidden');
+                button.textContent = 'Unhide';
+            }
+            saveHiddenItemsToStorage();
         }
 
         // Load feeds on page load
