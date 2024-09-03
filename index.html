@@ -20,10 +20,12 @@
         button { margin-right: 10px; }
         h3 { margin-bottom: 10px; }
         .subsection ul li button { margin-left: 10px; }
+        #refresh-button { float: right; }
     </style>
 </head>
 <body>
     <h1>Amir's Information Aggregator v1.4</h1>
+    <button id="refresh-button" onclick="fetchFeeds()">Refresh Feeds</button>
     <div id="error-message"></div>
     <ul id="feed-list"></ul>
 
@@ -208,11 +210,11 @@
             feedItems = feedItems.filter((item, index, self) =>
                 index === self.findIndex(t => t.title === item.title && t.link === item.link) &&
                 !Array.from(excludedTerms).some(term => item.title.toLowerCase().includes(term.toLowerCase())) &&
-                moment(item.published).isAfter(startDate)
+                moment(item.pubDate).isAfter(startDate)
             );
 
             // Sort by date
-            feedItems.sort((a, b) => moment(b.published).diff(moment(a.published)));
+            feedItems.sort((a, b) => moment(b.pubDate).diff(moment(a.pubDate)));
 
             console.log('After processing. Total items:', feedItems.length);
 
@@ -236,7 +238,7 @@
                 }
                 li.innerHTML = `
                     <strong>${item.title}</strong><br>
-                    <small>${moment(item.published).format('MMMM D, YYYY')}</small><br>
+                    <small>${moment(item.pubDate).format('MMMM D, YYYY')}</small><br>
                     <a href="${item.link}" target="_blank">Read More</a>
                     <button onclick="toggleItemVisibility(this, '${item.link}')">
                         ${hiddenItems.has(item.link) ? 'Unhide' : 'Hide'}
@@ -352,9 +354,6 @@
 
         // Load feeds on page load
         loadFeeds();
-
-        // Refresh feeds every 5 minutes
-        setInterval(fetchFeeds, 5 * 60 * 1000);
     </script>
 </body>
 </html>
