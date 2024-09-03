@@ -190,14 +190,29 @@
         function processFeeds() {
             console.log('Processing feeds. Total items:', feedItems.length);
 
-            // Remove duplicates and apply exclusions
+            const timeframe = document.getElementById('timeframe').value;
+            const now = moment();
+            let startDate;
+
+            if (timeframe === 'd') {
+                startDate = now.subtract(1, 'day');
+            } else if (timeframe === 'w') {
+                startDate = now.subtract(1, 'week');
+            } else if (timeframe === 'm') {
+                startDate = now.subtract(1, 'month');
+            } else if (timeframe === 'y') {
+                startDate = now.subtract(1, 'year');
+            }
+
+            // Remove duplicates and apply exclusions and timeframe filter
             feedItems = feedItems.filter((item, index, self) =>
                 index === self.findIndex(t => t.title === item.title && t.link === item.link) &&
-                !Array.from(excludedTerms).some(term => item.title.toLowerCase().includes(term.toLowerCase()))
+                !Array.from(excludedTerms).some(term => item.title.toLowerCase().includes(term.toLowerCase())) &&
+                moment(item.published).isAfter(startDate)
             );
 
             // Sort by date
-            feedItems.sort((a, b) => moment(b.pubDate).diff(moment(a.pubDate)));
+            feedItems.sort((a, b) => moment(b.published).diff(moment(a.published)));
 
             console.log('After processing. Total items:', feedItems.length);
 
@@ -221,7 +236,7 @@
                 }
                 li.innerHTML = `
                     <strong>${item.title}</strong><br>
-                    <small>${moment(item.pubDate).format('MMMM D, YYYY')}</small><br>
+                    <small>${moment(item.published).format('MMMM D, YYYY')}</small><br>
                     <a href="${item.link}" target="_blank">Read More</a>
                     <button onclick="toggleItemVisibility(this, '${item.link}')">
                         ${hiddenItems.has(item.link) ? 'Unhide' : 'Hide'}
@@ -254,7 +269,7 @@
             let feedUrl = '';
 
             if (searchEngine === 'google') {
-                feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en&tbs=qdr:${timeframe}`;
+                feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en&sort=date`;
             } else if (searchEngine === 'bing') {
                 feedUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(keywords)}&format=rss&setmkt=en-US&setlang=en-US&timefilter=${timeframe === 'd' ? 1 : timeframe === 'w' ? 7 : timeframe === 'm' ? 30 : 12}`;
             }
@@ -337,6 +352,9 @@
 
         // Load feeds on page load
         loadFeeds();
+
+        // Refresh feeds every 5 minutes
+        setInterval(fetchFeeds, 5 * 60 * 1000);
     </script>
 </body>
 </html>
