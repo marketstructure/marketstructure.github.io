@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amir's Information Aggregator v1.4</title>
+    <title>Amir's Information Aggregator v1.8</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <style>
@@ -22,12 +22,12 @@
     </style>
 </head>
 <body>
-    <h1>Amir's Information Aggregator v1.4</h1>
+    <h1>Amir's Information Aggregator v1.8</h1>
     <div id="error-message"></div>
     <ul id="feed-list"></ul>
-
-    <div id="feed-builder" class="section">
-        <h2>Feed Builder</h2>
+<div id="feed-builder" class="section">
+            <h2 style="color: #03055B;">Feed Builder</h2>
+            ...
         
         <div class="subsection">
             <h3>News Search</h3>
@@ -47,7 +47,7 @@
         </div>
 
         <div class="subsection">
-            <h3>Enter your own RSS feed URL</h3>
+            <h3>Add your own feed</h3>
             <div class="form-group">
                 <input type="text" id="new-feed" placeholder="Enter RSS feed URL">
                 <button onclick="addFeed()">Add Feed</button>
@@ -64,7 +64,6 @@
         </div>
 
         <div id="feed-summary"></div>
-        <button onclick="clearAllFeeds()">Clear All Feeds</button>
     </div>
 
     <script>
@@ -116,25 +115,41 @@
             }
         }
 
-        function updateFeedSummary() {
-            const summary = document.getElementById('feed-summary');
-            summary.innerHTML = '<h3>Current Feeds:</h3>';
-            if (feeds.length === 0) {
-                summary.innerHTML += '<p>No feeds added yet.</p>';
-            } else {
-                const ul = document.createElement('ul');
-                feeds.forEach((feed, index) => {
-                    const li = document.createElement('li');
-                    li.textContent = feed;
-                    const removeButton = document.createElement('button');
-                    removeButton.textContent = 'Remove';
-                    removeButton.onclick = () => removeFeed(index);
-                    li.appendChild(removeButton);
-                    ul.appendChild(li);
-                });
-                summary.appendChild(ul);
-            }
-        }
+   function updateFeedSummary() {
+       const summary = document.getElementById('feed-summary');
+       summary.style.border = '1px solid #ccc';
+       summary.style.padding = '10px';
+       summary.style.background = '#f7f7f7'; // add light gray background
+       summary.style.marginBottom = '20px'; // add some space below the box
+summary.innerHTML = '<h3 style="font-size: 16px;">Current Feeds:</h3>';
+       if (feeds.length === 0) {
+           summary.innerHTML += '<p>No feeds added yet.</p>';
+       } else {
+           const ul = document.createElement('ul');
+           ul.style.listStyle = 'none'; // remove default list styling
+           ul.style.padding = '0'; // remove default list padding
+           ul.style.margin = '0'; // remove default list margin
+           feeds.forEach((feed, index) => {
+               const li = document.createElement('li');
+               li.style.paddingBottom = '10px'; // add some space between list items
+               const span = document.createElement('span');
+               span.textContent = feed;
+               span.style.marginRight = '10px'; // add some space between feed and button
+               li.appendChild(span);
+               const removeButton = document.createElement('button');
+               removeButton.textContent = 'Remove';
+               removeButton.onclick = () => removeFeed(index);
+               li.appendChild(removeButton);
+               ul.appendChild(li);
+           });
+           summary.appendChild(ul);
+           const clearButton = document.createElement('button');
+           clearButton.textContent = 'Clear All Feeds';
+           clearButton.style.background = '#ADD8E6'; // change background color to light blue
+           clearButton.onclick = clearAllFeeds;
+           summary.appendChild(clearButton);
+       }
+   }
 
         function removeFeed(index) {
             feeds.splice(index, 1);
@@ -290,14 +305,25 @@
 
         function updateExcludedTerms() {
             const excludedTermsDiv = document.getElementById('excluded-terms');
-            excludedTermsDiv.innerHTML = '<h4>Excluded Terms:</h4>';
+            excludedTermsDiv.style.border = '1px solid #ccc';
+            excludedTermsDiv.style.padding = '10px';
+            excludedTermsDiv.style.background = '#f7f7f7'; // add light gray background
+            excludedTermsDiv.style.marginBottom = '20px'; // add some space below the box
+            excludedTermsDiv.innerHTML = '<h4 style="margin-top: 0;">Excluded Terms:</h4>';
             if (excludedTerms.size === 0) {
                 excludedTermsDiv.innerHTML += '<p>No terms excluded.</p>';
             } else {
                 const ul = document.createElement('ul');
+                ul.style.listStyle = 'none'; // remove default list styling
+                ul.style.padding = '0'; // remove default list padding
+                ul.style.margin = '0'; // remove default list margin
                 excludedTerms.forEach(term => {
                     const li = document.createElement('li');
-                    li.textContent = term;
+                    li.style.paddingBottom = '10px'; // add some space between list items
+                    const span = document.createElement('span');
+                    span.textContent = term;
+                    span.style.marginRight = '10px'; // add some space between term and button
+                    li.appendChild(span);
                     const removeButton = document.createElement('button');
                     removeButton.textContent = 'Remove';
                     removeButton.onclick = () => removeExcludedTerm(term);
@@ -305,11 +331,12 @@
                     ul.appendChild(li);
                 });
                 excludedTermsDiv.appendChild(ul);
-                const clearButton = document.createElement('button');
-                clearButton.textContent = 'Clear All Exclusions';
-                clearButton.onclick = clearAllExclusions;
-                excludedTermsDiv.appendChild(clearButton);
-            }
+                    const clearButton = document.createElement('button');
+                    clearButton.textContent = 'Clear All Exclusions';
+                    clearButton.style.background = '#ADD8E6'; // change background color to light blue
+                    clearButton.onclick = clearAllExclusions;
+                    excludedTermsDiv.appendChild(clearButton);
+                }
         }
 
         function removeExcludedTerm(term) {
