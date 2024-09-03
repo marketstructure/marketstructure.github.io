@@ -85,7 +85,107 @@
     </div>
 
     <script>
-        // ... (JavaScript code remains the same)
+        let feeds = [];
+        const excludedTerms = new Set();
+
+        function loadFeeds() {
+            const storedFeeds = localStorage.getItem('feeds');
+            if (storedFeeds) {
+                feeds = JSON.parse(storedFeeds);
+            }
+            updateFeedList();
+            updateFeedSummary();
+        }
+
+        function saveFeed() {
+            localStorage.setItem('feeds', JSON.stringify(feeds));
+        }
+
+        function addFeed() {
+            const newFeed = document.getElementById('new-feed').value.trim();
+            if (newFeed && !feeds.includes(newFeed)) {
+                feeds.push(newFeed);
+                saveFeed();
+                updateFeedList();
+                updateFeedSummary();
+                document.getElementById('new-feed').value = '';
+            }
+        }
+
+        function removeFeed(index) {
+            feeds.splice(index, 1);
+            saveFeed();
+            updateFeedList();
+            updateFeedSummary();
+        }
+
+        function clearAllFeeds() {
+            feeds = [];
+            saveFeed();
+            updateFeedList();
+            updateFeedSummary();
+        }
+
+        function updateFeedList() {
+            const feedList = document.getElementById('feed-list');
+            feedList.innerHTML = '';
+            feeds.forEach((feed, index) => {
+                const li = document.createElement('li');
+                li.className = 'feed-item';
+                li.innerHTML = `
+                    ${feed}
+                    <button onclick="removeFeed(${index})">Remove</button>
+                `;
+                feedList.appendChild(li);
+            });
+        }
+
+        function generateFeed() {
+            const keywords = document.getElementById('keywords').value.trim();
+            const searchEngine = document.querySelector('input[name="search-engine"]:checked').value;
+            
+            if (keywords) {
+                let feedUrl;
+                if (searchEngine === 'google') {
+                    feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en`;
+                } else {
+                    feedUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(keywords)}&format=rss`;
+                }
+                
+                document.getElementById('generated-feed').innerHTML = `
+                    Generated feed URL: ${feedUrl}
+                    <button onclick="addGeneratedFeed('${feedUrl}')">Add to feeds</button>
+                `;
+            }
+        }
+
+        function addGeneratedFeed(feedUrl) {
+            if (!feeds.includes(feedUrl)) {
+                feeds.push(feedUrl);
+                saveFeed();
+                updateFeedList();
+                updateFeedSummary();
+            }
+        }
+
+        function addExcludedTerm() {
+            const term = document.getElementById('exclude-term').value.trim().toLowerCase();
+            if (term && !excludedTerms.has(term)) {
+                excludedTerms.add(term);
+                updateExcludedTerms();
+                document.getElementById('exclude-term').value = '';
+            }
+        }
+
+        function removeExcludedTerm(term) {
+            excludedTerms.delete(term);
+            updateExcludedTerms();
+        }
+
+        function clearAllExclusions() {
+            excludedTerms.clear();
+            updateExcludedTerms();
+        }
 
         function updateFeedSummary() {
             const summary = document.getElementById('feed-summary');
