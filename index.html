@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSS Feed Aggregator</title>
+    <title>Information Aggregator v1.3</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <style>
@@ -14,17 +14,40 @@
         .hidden { display: none; }
         #feed-summary { margin-top: 20px; }
         #error-message { color: red; }
+        .section { margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px; }
+        .form-group { margin-bottom: 10px; }
+        button { margin-right: 10px; }
     </style>
 </head>
 <body>
-    <h1>RSS Feed Aggregator</h1>
-    <div>
-        <input type="text" id="new-feed" placeholder="Enter RSS feed URL">
-        <button onclick="addFeed()">Add Feed</button>
-    </div>
+    <h1>Information Aggregator v1.3</h1>
     <div id="error-message"></div>
     <ul id="feed-list"></ul>
-    <div id="feed-summary"></div>
+
+    <div id="feed-builder" class="section">
+        <h2>Feed Builder</h2>
+        <div class="form-group">
+            <label>
+                <input type="radio" name="search-engine" value="google" checked> Google News
+            </label>
+            <label>
+                <input type="radio" name="search-engine" value="bing"> Bing News
+            </label>
+        </div>
+        <div class="form-group">
+            <input type="text" id="keywords" placeholder="Enter keywords">
+            <button onclick="generateFeed()">Generate Feed</button>
+        </div>
+        <div id="generated-feed"></div>
+
+        <div class="form-group">
+            <input type="text" id="new-feed" placeholder="Enter RSS feed URL">
+            <button onclick="addFeed()">Add Feed</button>
+        </div>
+
+        <div id="feed-summary"></div>
+        <button onclick="clearAllFeeds()">Clear All Feeds</button>
+    </div>
 
     <script>
         let feeds = [];
@@ -185,6 +208,43 @@
                 button.textContent = 'Unhide';
             }
             saveHiddenItemsToStorage();
+        }
+
+        function generateFeed() {
+            const keywords = document.getElementById('keywords').value;
+            const searchEngine = document.querySelector('input[name="search-engine"]:checked').value;
+            let feedUrl = '';
+
+            if (searchEngine === 'google') {
+                feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en`;
+            } else if (searchEngine === 'bing') {
+                feedUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(keywords)}&format=rss`;
+            }
+
+            const generatedFeedDiv = document.getElementById('generated-feed');
+            generatedFeedDiv.innerHTML = `
+                <p>Generated Feed URL: ${feedUrl}</p>
+                <button onclick="addGeneratedFeed('${feedUrl}')">Add to Feeds</button>
+            `;
+        }
+
+        function addGeneratedFeed(feedUrl) {
+            if (!feeds.includes(feedUrl)) {
+                feeds.push(feedUrl);
+                saveFeedsToStorage();
+                updateFeedSummary();
+                fetchFeeds();
+            }
+        }
+
+        function clearAllFeeds() {
+            feeds = [];
+            feedItems = [];
+            hiddenItems.clear();
+            saveFeedsToStorage();
+            saveHiddenItemsToStorage();
+            updateFeedSummary();
+            displayFeeds();
         }
 
         // Load feeds on page load
