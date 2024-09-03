@@ -84,159 +84,209 @@
         </div>
     </div>
 
-    <script>
-        let feeds = [];
-        const excludedTerms = new Set();
+   <script>
+    let feeds = [];
+    const excludedTerms = new Set();
 
-        function loadFeeds() {
-            const storedFeeds = localStorage.getItem('feeds');
-            if (storedFeeds) {
-                feeds = JSON.parse(storedFeeds);
-            }
-            updateFeedList();
-            updateFeedSummary();
+    function loadFeeds() {
+        const storedFeeds = localStorage.getItem('feeds');
+        if (storedFeeds) {
+            feeds = JSON.parse(storedFeeds);
         }
+        updateFeedList();
+        updateFeedSummary();
+        fetchAllFeeds();
+    }
 
-        function saveFeed() {
-            localStorage.setItem('feeds', JSON.stringify(feeds));
-        }
+    function saveFeed() {
+        localStorage.setItem('feeds', JSON.stringify(feeds));
+    }
 
-        function addFeed() {
-            const newFeed = document.getElementById('new-feed').value.trim();
-            if (newFeed && !feeds.includes(newFeed)) {
-                feeds.push(newFeed);
-                saveFeed();
-                updateFeedList();
-                updateFeedSummary();
-                document.getElementById('new-feed').value = '';
-            }
-        }
-
-        function removeFeed(index) {
-            feeds.splice(index, 1);
+    function addFeed() {
+        const newFeed = document.getElementById('new-feed').value.trim();
+        if (newFeed && !feeds.includes(newFeed)) {
+            feeds.push(newFeed);
             saveFeed();
             updateFeedList();
             updateFeedSummary();
+            fetchFeed(newFeed);
+            document.getElementById('new-feed').value = '';
         }
+    }
 
-        function clearAllFeeds() {
-            feeds = [];
+    function removeFeed(index) {
+        feeds.splice(index, 1);
+        saveFeed();
+        updateFeedList();
+        updateFeedSummary();
+        fetchAllFeeds();
+    }
+
+    function clearAllFeeds() {
+        feeds = [];
+        saveFeed();
+        updateFeedList();
+        updateFeedSummary();
+        document.getElementById('feed-list').innerHTML = '';
+    }
+
+    function updateFeedList() {
+        const feedList = document.getElementById('feed-list');
+        feedList.innerHTML = '';
+        feeds.forEach((feed, index) => {
+            const li = document.createElement('li');
+            li.className = 'feed-item';
+            li.innerHTML = `
+                ${feed}
+                <button onclick="removeFeed(${index})">Remove</button>
+            `;
+            feedList.appendChild(li);
+        });
+    }
+
+    function generateFeed() {
+        const keywords = document.getElementById('keywords').value.trim();
+        const searchEngine = document.querySelector('input[name="search-engine"]:checked').value;
+        
+        if (keywords) {
+            let feedUrl;
+            if (searchEngine === 'google') {
+                feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en`;
+            } else {
+                feedUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(keywords)}&format=rss`;
+            }
+            
+            document.getElementById('generated-feed').innerHTML = `
+                Generated feed URL: ${feedUrl}
+                <button onclick="addGeneratedFeed('${feedUrl}')">Add to feeds</button>
+            `;
+        }
+    }
+
+    function addGeneratedFeed(feedUrl) {
+        if (!feeds.includes(feedUrl)) {
+            feeds.push(feedUrl);
             saveFeed();
             updateFeedList();
             updateFeedSummary();
+            fetchFeed(feedUrl);
         }
+    }
 
-        function updateFeedList() {
-            const feedList = document.getElementById('feed-list');
-            feedList.innerHTML = '';
+    function addExcludedTerm() {
+        const term = document.getElementById('exclude-term').value.trim().toLowerCase();
+        if (term && !excludedTerms.has(term)) {
+            excludedTerms.add(term);
+            updateExcludedTerms();
+            document.getElementById('exclude-term').value = '';
+            fetchAllFeeds();
+        }
+    }
+
+    function removeExcludedTerm(term) {
+        excludedTerms.delete(term);
+        updateExcludedTerms();
+        fetchAllFeeds();
+    }
+
+    function clearAllExclusions() {
+        excludedTerms.clear();
+        updateExcludedTerms();
+        fetchAllFeeds();
+    }
+
+    function updateFeedSummary() {
+        const summary = document.getElementById('feed-summary');
+        summary.innerHTML = '<h3>Current Feeds:</h3>';
+        if (feeds.length === 0) {
+            summary.innerHTML += '<p>No feeds added yet.</p>';
+        } else {
+            const ul = document.createElement('ul');
             feeds.forEach((feed, index) => {
+                const li = document.createElement('li');
+                li.textContent = feed;
+                const removeButton = document.createElement('button');
+                removeButton.textContent = 'Remove';
+                removeButton.onclick = () => removeFeed(index);
+                li.appendChild(removeButton);
+                ul.appendChild(li);
+            });
+            summary.appendChild(ul);
+        }
+        const clearButton = document.createElement('button');
+        clearButton.textContent = 'Clear All Feeds';
+        clearButton.onclick = clearAllFeeds;
+        summary.appendChild(clearButton);
+    }
+
+    function updateExcludedTerms() {
+        const excludedTermsDiv = document.getElementById('excluded-terms');
+        excludedTermsDiv.innerHTML = '<h3>Excluded Terms:</h3>';
+        if (excludedTerms.size === 0) {
+            excludedTermsDiv.innerHTML += '<p>No terms excluded.</p>';
+        } else {
+            const ul = document.createElement('ul');
+            excludedTerms.forEach(term => {
+                const li = document.createElement('li');
+                li.textContent = term;
+                const removeButton = document.createElement('button');
+                removeButton.textContent = 'Remove';
+                removeButton.onclick = () => removeExcludedTerm(term);
+                li.appendChild(removeButton);
+                ul.appendChild(li);
+            });
+            excludedTermsDiv.appendChild(ul);
+        }
+        const clearButton = document.createElement('button');
+        clearButton.textContent = 'Clear All Exclusions';
+        clearButton.onclick = clearAllExclusions;
+        excludedTermsDiv.appendChild(clearButton);
+    }
+
+    function fetchAllFeeds() {
+        document.getElementById('feed-list').innerHTML = '';
+        feeds.forEach(feed => fetchFeed(feed));
+    }
+
+    function fetchFeed(feedUrl) {
+        const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`;
+        
+        fetch(apiUrl)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    displayFeedItems(data.items, feedUrl);
+                } else {
+                    console.error('Error fetching feed:', data.message);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function displayFeedItems(items, feedUrl) {
+        const feedList = document.getElementById('feed-list');
+        
+        items.forEach(item => {
+            if (!isExcluded(item.title)) {
                 const li = document.createElement('li');
                 li.className = 'feed-item';
                 li.innerHTML = `
-                    ${feed}
-                    <button onclick="removeFeed(${index})">Remove</button>
+                    <h3><a href="${item.link}" target="_blank">${item.title}</a></h3>
+                    <p>${item.description}</p>
+                    <small>Published: ${moment(item.pubDate).format('MMMM D, YYYY h:mm A')} | Source: ${feedUrl}</small>
                 `;
                 feedList.appendChild(li);
-            });
-        }
-
-        function generateFeed() {
-            const keywords = document.getElementById('keywords').value.trim();
-            const searchEngine = document.querySelector('input[name="search-engine"]:checked').value;
-            
-            if (keywords) {
-                let feedUrl;
-                if (searchEngine === 'google') {
-                    feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en`;
-                } else {
-                    feedUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(keywords)}&format=rss`;
-                }
-                
-                document.getElementById('generated-feed').innerHTML = `
-                    Generated feed URL: ${feedUrl}
-                    <button onclick="addGeneratedFeed('${feedUrl}')">Add to feeds</button>
-                `;
             }
-        }
+        });
+    }
 
-        function addGeneratedFeed(feedUrl) {
-            if (!feeds.includes(feedUrl)) {
-                feeds.push(feedUrl);
-                saveFeed();
-                updateFeedList();
-                updateFeedSummary();
-            }
-        }
+    function isExcluded(title) {
+        const lowerTitle = title.toLowerCase();
+        return Array.from(excludedTerms).some(term => lowerTitle.includes(term));
+    }
 
-        function addExcludedTerm() {
-            const term = document.getElementById('exclude-term').value.trim().toLowerCase();
-            if (term && !excludedTerms.has(term)) {
-                excludedTerms.add(term);
-                updateExcludedTerms();
-                document.getElementById('exclude-term').value = '';
-            }
-        }
-
-        function removeExcludedTerm(term) {
-            excludedTerms.delete(term);
-            updateExcludedTerms();
-        }
-
-        function clearAllExclusions() {
-            excludedTerms.clear();
-            updateExcludedTerms();
-        }
-
-        function updateFeedSummary() {
-            const summary = document.getElementById('feed-summary');
-            summary.innerHTML = '<h3>Current Feeds:</h3>';
-            if (feeds.length === 0) {
-                summary.innerHTML += '<p>No feeds added yet.</p>';
-            } else {
-                const ul = document.createElement('ul');
-                feeds.forEach((feed, index) => {
-                    const li = document.createElement('li');
-                    li.textContent = feed;
-                    const removeButton = document.createElement('button');
-                    removeButton.textContent = 'Remove';
-                    removeButton.onclick = () => removeFeed(index);
-                    li.appendChild(removeButton);
-                    ul.appendChild(li);
-                });
-                summary.appendChild(ul);
-            }
-            const clearButton = document.createElement('button');
-            clearButton.textContent = 'Clear All Feeds';
-            clearButton.onclick = clearAllFeeds;
-            summary.appendChild(clearButton);
-        }
-
-        function updateExcludedTerms() {
-            const excludedTermsDiv = document.getElementById('excluded-terms');
-            excludedTermsDiv.innerHTML = '<h3>Excluded Terms:</h3>';
-            if (excludedTerms.size === 0) {
-                excludedTermsDiv.innerHTML += '<p>No terms excluded.</p>';
-            } else {
-                const ul = document.createElement('ul');
-                excludedTerms.forEach(term => {
-                    const li = document.createElement('li');
-                    li.textContent = term;
-                    const removeButton = document.createElement('button');
-                    removeButton.textContent = 'Remove';
-                    removeButton.onclick = () => removeExcludedTerm(term);
-                    li.appendChild(removeButton);
-                    ul.appendChild(li);
-                });
-                excludedTermsDiv.appendChild(ul);
-            }
-            const clearButton = document.createElement('button');
-            clearButton.textContent = 'Clear All Exclusions';
-            clearButton.onclick = clearAllExclusions;
-            excludedTermsDiv.appendChild(clearButton);
-        }
-
-        // Load feeds on page load
-        loadFeeds();
-    </script>
+    // Load feeds on page load
+    loadFeeds();
+</script>
 </body>
 </html>
