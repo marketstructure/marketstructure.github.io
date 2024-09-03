@@ -12,13 +12,14 @@
         .feed-item { border-bottom: 1px solid #ccc; padding: 10px 0; }
         .feed-item button { margin-left: 10px; }
         .hidden { display: none; }
-        #feed-summary, #excluded-terms { margin-top: 20px; }
+        #feed-summary, #excluded-terms { margin-top: 20px; border: 1px solid #ddd; background-color: #f9f9f9; padding: 10px; }
         #error-message { color: red; }
         .section { margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px; }
         .subsection { margin-top: 20px; }
         .form-group { margin-bottom: 15px; }
         button { margin-right: 10px; }
         h3 { margin-bottom: 10px; }
+        .subsection ul li button { margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -28,7 +29,7 @@
 
     <div id="feed-builder" class="section">
         <h2>Feed Builder</h2>
-        
+
         <div class="subsection">
             <h3>News Search</h3>
             <div class="form-group">
@@ -41,6 +42,12 @@
             </div>
             <div class="form-group">
                 <input type="text" id="keywords" placeholder="Enter keywords">
+                <select id="timeframe">
+                    <option value="d">Past 24 hours</option>
+                    <option value="w">Past week</option>
+                    <option value="m">Past month</option>
+                    <option value="y">Past year</option>
+                </select>
                 <button onclick="generateFeed()">Generate Feed</button>
             </div>
             <div id="generated-feed"></div>
@@ -155,7 +162,7 @@
 
             console.log('Fetching feeds:', feeds);
 
-            const promises = feeds.map(feed => 
+            const promises = feeds.map(feed =>
                 $.ajax({
                     url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}`,
                     dataType: 'json'
@@ -243,12 +250,13 @@
         function generateFeed() {
             const keywords = document.getElementById('keywords').value;
             const searchEngine = document.querySelector('input[name="search-engine"]:checked').value;
+            const timeframe = document.getElementById('timeframe').value;
             let feedUrl = '';
 
             if (searchEngine === 'google') {
-                feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en`;
+                feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en&tbs=qdr:${timeframe}`;
             } else if (searchEngine === 'bing') {
-                feedUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(keywords)}&format=rss`;
+                feedUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(keywords)}&format=rss&setmkt=en-US&setlang=en-US&timefilter=${timeframe === 'd' ? 1 : timeframe === 'w' ? 7 : timeframe === 'm' ? 30 : 12}`;
             }
 
             const generatedFeedDiv = document.getElementById('generated-feed');
@@ -265,6 +273,7 @@
                 updateFeedSummary();
                 fetchFeeds();
             }
+            document.getElementById('generated-feed').innerHTML = '';
         }
 
         function clearAllFeeds() {
