@@ -8,6 +8,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1 {margin-bottom: 20px;}
+#refresh-button {margin-bottom: 20px;}
         #feed-list { list-style-type: none; padding: 0; }
         .feed-item { border-bottom: 1px solid #ccc; padding: 10px 0; }
         .feed-item button { margin-left: 10px; }
@@ -23,6 +25,7 @@
 </head>
 <body>
     <h1>Amir's Information Aggregator v1.8</h1>
+    <button id="refresh-button" onclick="fetchFeeds()">Refresh</button>
     <div id="error-message"></div>
     <ul id="feed-list"></ul>
 <div id="feed-builder" class="section">
@@ -31,20 +34,30 @@
         
         <div class="subsection">
             <h3>News Search</h3>
-            <div class="form-group">
-                <label>
-                    <input type="radio" name="search-engine" value="google" checked> Google News
-                </label>
-                <label>
-                    <input type="radio" name="search-engine" value="bing"> Bing News
-                </label>
-            </div>
-            <div class="form-group">
-                <input type="text" id="keywords" placeholder="Enter keywords">
-                <button onclick="generateFeed()">Generate Feed</button>
-            </div>
-            <div id="generated-feed"></div>
+           <div class="form-group">
+               <label>
+                   <input type="radio" name="search-engine" value="google" checked> Google News
+               </label>
+               <label>
+                   <input type="radio" name="search-engine" value="bing"> Bing News
+               </label>
+               <label>
+                   <input type="radio" name="search-engine" value="both"> Both
+               </label>
+           </div>
+           
+        <div class="form-group">
+            <input type="text" id="keywords" placeholder="Enter keywords">
+            <select id="timeframe">
+                <option value="default">Default</option>
+                <option value="day">Past Day</option>
+                <option value="week">Past Week</option>
+                <option value="month">Past Month</option>
+                <option value="year">Past Year</option>
+            </select>
+            <button onclick="generateFeed()">Generate Feed</button>
         </div>
+        <div id="generated-feed"></div>
 
         <div class="subsection">
             <h3>Add your own feed</h3>
@@ -73,24 +86,45 @@
         let excludedTerms = new Set();
 
         function loadFeeds() {
-            const storedFeeds = localStorage.getItem('rssFeeds');
-            if (storedFeeds) {
-                feeds = JSON.parse(storedFeeds);
-                updateFeedSummary();
-                fetchFeeds();
-            }
+    const storedFeeds = localStorage.getItem('rssFeeds');
+    if (storedFeeds) {
+        feeds = JSON.parse(storedFeeds);
+        updateFeedSummary();
+    }
 
-            const storedHiddenItems = localStorage.getItem('hiddenItems');
-            if (storedHiddenItems) {
-                hiddenItems = new Set(JSON.parse(storedHiddenItems));
-            }
+    const storedHiddenItems = localStorage.getItem('hiddenItems');
+    if (storedHiddenItems) {
+        hiddenItems = new Set(JSON.parse(storedHiddenItems));
+    }
 
-            const storedExcludedTerms = localStorage.getItem('excludedTerms');
-            if (storedExcludedTerms) {
-                excludedTerms = new Set(JSON.parse(storedExcludedTerms));
-                updateExcludedTerms();
-            }
+    const storedExcludedTerms = localStorage.getItem('excludedTerms');
+    if (storedExcludedTerms) {
+        excludedTerms = new Set(JSON.parse(storedExcludedTerms));
+        updateExcludedTerms();
+    }
+
+    // Fetch fresh feeds immediately on page load
+    if (feeds.length > 0) {
+        fetchFeeds();
+    }
+}
+
+function setupAutoRefresh() {
+    const REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+    function autoRefresh() {
+        console.log('Auto-refreshing feeds...');
+        if (feeds.length > 0) {
+            fetchFeeds();
         }
+    }
+
+    // Set up interval for auto-refresh
+    setInterval(autoRefresh, REFRESH_INTERVAL);
+
+    // Also refresh when the window gains focus
+    window.addEventListener('focus', autoRefresh);
+}
 
         function saveFeedsToStorage() {
             localStorage.setItem('rssFeeds', JSON.stringify(feeds));
@@ -115,41 +149,48 @@
             }
         }
 
-   function updateFeedSummary() {
-       const summary = document.getElementById('feed-summary');
-       summary.style.border = '1px solid #ccc';
-       summary.style.padding = '10px';
-       summary.style.background = '#f7f7f7'; // add light gray background
-       summary.style.marginBottom = '20px'; // add some space below the box
-summary.innerHTML = '<h3 style="font-size: 16px;">Current Feeds:</h3>';
-       if (feeds.length === 0) {
-           summary.innerHTML += '<p>No feeds added yet.</p>';
-       } else {
-           const ul = document.createElement('ul');
-           ul.style.listStyle = 'none'; // remove default list styling
-           ul.style.padding = '0'; // remove default list padding
-           ul.style.margin = '0'; // remove default list margin
-           feeds.forEach((feed, index) => {
-               const li = document.createElement('li');
-               li.style.paddingBottom = '10px'; // add some space between list items
-               const span = document.createElement('span');
-               span.textContent = feed;
-               span.style.marginRight = '10px'; // add some space between feed and button
-               li.appendChild(span);
-               const removeButton = document.createElement('button');
-               removeButton.textContent = 'Remove';
-               removeButton.onclick = () => removeFeed(index);
-               li.appendChild(removeButton);
-               ul.appendChild(li);
-           });
-           summary.appendChild(ul);
-           const clearButton = document.createElement('button');
-           clearButton.textContent = 'Clear All Feeds';
-           clearButton.style.background = '#ADD8E6'; // change background color to light blue
-           clearButton.onclick = clearAllFeeds;
-           summary.appendChild(clearButton);
-       }
-   }
+        function updateFeedSummary() {
+  const summary = document.getElementById('feed-summary');
+  summary.style.border = '1px solid #ccc';
+  summary.style.padding = '10px';
+  summary.style.background = '#f7f7f7';
+  summary.style.marginBottom = '20px';
+  summary.style.marginTop = '10px';
+  summary.innerHTML = '<h3 style="margin-top: 0; font-size: 16px;">Current Feeds:</h3>';
+
+  if (feeds.length === 0) {
+    summary.innerHTML += '<p>No feeds added yet.</p>';
+  } else {
+    const ul = document.createElement('ul');
+    ul.style.listStyle = 'none';
+    ul.style.padding = '0';
+    ul.style.margin = '0';
+    feeds.forEach((feed, index) => {
+      const li = document.createElement('li');
+      li.style.paddingBottom = '10px';
+      li.style.display = 'flex';
+      li.style.alignItems = 'center';
+      li.style.justifyContent = 'space-between';
+      const span = document.createElement('span');
+      span.textContent = feed;
+      span.style.marginRight = '10px';
+      span.style.wordBreak = 'break-all';
+      li.appendChild(span);
+      const removeButton = document.createElement('button');
+      removeButton.textContent = 'Remove';
+      removeButton.onclick = () => removeFeed(index);
+      li.appendChild(removeButton);
+      ul.appendChild(li);
+    });
+    summary.appendChild(ul);
+    const clearButton = document.createElement('button');
+    clearButton.textContent = 'Clear All Feeds';
+    clearButton.style.background = '#ADD8E6';
+    clearButton.onclick = clearAllFeeds;
+    summary.appendChild(clearButton);
+  }
+}
+
 
         function removeFeed(index) {
             feeds.splice(index, 1);
@@ -159,41 +200,60 @@ summary.innerHTML = '<h3 style="font-size: 16px;">Current Feeds:</h3>';
         }
 
         function fetchFeeds() {
-            feedItems = [];
-            const errorMessage = document.getElementById('error-message');
-            errorMessage.textContent = '';
+  feedItems = [];
+  const errorMessage = document.getElementById('error-message');
+  errorMessage.textContent = '';
 
-            if (feeds.length === 0) {
-                console.log('No feeds to fetch');
-                return;
-            }
+  if (feeds.length === 0) {
+    console.log('No feeds to fetch');
+    return;
+  }
 
-            console.log('Fetching feeds:', feeds);
+  console.log('Fetching feeds:', feeds);
 
-            const promises = feeds.map(feed => 
-                $.ajax({
-                    url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}`,
-                    dataType: 'json'
-                })
-            );
+  const promises = feeds.map(feed =>
+    $.ajax({
+      url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}`,
+      dataType: 'json'
+    })
+    .then(data => ({ status: 'fulfilled', value: data, feed }))
+    .catch(error => ({ status: 'rejected', reason: error, feed }))
+  );
 
-            Promise.all(promises)
-                .then(results => {
-                    console.log('Fetched results:', results);
-                    results.forEach(data => {
-                        if (data.status === 'ok' && Array.isArray(data.items)) {
-                            feedItems = feedItems.concat(data.items);
-                        } else {
-                            console.error('Invalid data received:', data);
-                        }
-                    });
-                    processFeeds();
-                })
-                .catch(error => {
-                    console.error('Error fetching feeds:', error);
-                    errorMessage.textContent = 'Error fetching feeds. Please check the console for more details.';
-                });
+  Promise.all(promises)
+    .then(results => {
+      console.log('Fetched results:', results);
+      const errors = [];
+      results.forEach(result => {
+        if (result.status === 'fulfilled' && result.value.status === 'ok' && Array.isArray(result.value.items)) {
+          feedItems = feedItems.concat(result.value.items);
+        } else {
+          console.error('Error fetching feed:', result.feed, result.reason || result.value);
+          errors.push(result.feed);
         }
+      });
+      if (errors.length > 0) {
+        const errorMessageSummary = "Errors occurred while fetching some feeds. Note: too many requests within a window of time may trigger rate limits.";
+        const errorMessagesDetailed = `<p>Failed to fetch:</p><ul style="list-style-type: disc;">${errors.map((message) => `<li>${message}</li>`).join("")}</ul>`;
+        errorMessage.textContent = errorMessageSummary;
+        const feedList = document.getElementById('feed-list');
+        const errorDiv = document.createElement('div');
+        errorDiv.innerHTML = errorMessagesDetailed;
+        feedList.appendChild(errorDiv);
+      }
+      try {
+        processFeeds();
+      } catch (error) {
+        console.error('Error processing feeds:', error);
+        errorMessage.textContent = 'An unexpected error occurred. Please check the console for more details.';
+      }
+    })
+    .catch(error => {
+      console.error('Unexpected error:', error);
+      errorMessage.textContent = 'An unexpected error occurred. Please check the console for more details.';
+    });
+}
+
 
         function processFeeds() {
             console.log('Processing feeds. Total items:', feedItems.length);
@@ -255,33 +315,53 @@ summary.innerHTML = '<h3 style="font-size: 16px;">Current Feeds:</h3>';
             saveHiddenItemsToStorage();
         }
 
-        function generateFeed() {
-            const keywords = document.getElementById('keywords').value;
-            const searchEngine = document.querySelector('input[name="search-engine"]:checked').value;
-            let feedUrl = '';
-
-            if (searchEngine === 'google') {
-                feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en`;
-            } else if (searchEngine === 'bing') {
-                feedUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(keywords)}&format=rss`;
-            }
-
-            const generatedFeedDiv = document.getElementById('generated-feed');
-            generatedFeedDiv.innerHTML = `
-                <p>Generated Feed URL: ${feedUrl}</p>
-                <button onclick="addGeneratedFeed('${feedUrl}')">Add to Feeds</button>
-            `;
-        }
-
-        function addGeneratedFeed(feedUrl) {
-            if (!feeds.includes(feedUrl)) {
-                feeds.push(feedUrl);
-                saveFeedsToStorage();
-                updateFeedSummary();
-                fetchFeeds();
-            }
-        }
-
+   
+       function generateFeed() {
+         const keywords = document.getElementById('keywords').value;
+         const searchEngine = document.querySelector('input[name="search-engine"]:checked').value;
+         const timeframe = document.getElementById('timeframe').value;
+       
+         function getGoogleFeedUrl(keywords, timeframe) {
+           let url = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en`;
+           if (timeframe !== 'default') {
+             const timeMap = { day: '1d', week: '7d', month: '1m', year: '1y' };
+             url += `&when=${timeMap[timeframe]}`;
+           }
+           return url;
+         }
+       
+         function getBingFeedUrl(keywords, timeframe) {
+           let url = `https://www.bing.com/news/search?q=${encodeURIComponent(keywords)}&format=rss`;
+           if (timeframe !== 'default' && timeframe !== 'year') {
+             const timeMap = { day: 'Day', week: 'Week', month: 'Month' };
+             url += `&tf=${timeMap[timeframe]}`;
+           }
+           return url;
+         }
+       
+         let feedUrls = [];
+       
+         if (searchEngine === 'google' || searchEngine === 'both') {
+           feedUrls.push(getGoogleFeedUrl(keywords, timeframe));
+         }
+         if (searchEngine === 'bing' || searchEngine === 'both') {
+           feedUrls.push(getBingFeedUrl(keywords, timeframe));
+         }
+       
+         feedUrls.forEach(feedUrl => {
+           if (!feeds.includes(feedUrl)) {
+             feeds.push(feedUrl);
+           }
+         });
+       
+         saveFeedsToStorage();
+         updateFeedSummary();
+         fetchFeeds();
+       
+         const generatedFeedDiv = document.getElementById('generated-feed');
+         generatedFeedDiv.innerHTML = `<p>Feed(s) added: ${feedUrls.join(', ')}</p>`;
+       }
+ 
         function clearAllFeeds() {
             feeds = [];
             feedItems = [];
@@ -353,8 +433,9 @@ summary.innerHTML = '<h3 style="font-size: 16px;">Current Feeds:</h3>';
             fetchFeeds(); // Refresh feeds to apply updated exclusions
         }
 
-        // Load feeds on page load
-        loadFeeds();
+        // Load feeds and set up auto-refresh on page load
+loadFeeds();
+setupAutoRefresh();
     </script>
 </body>
 </html>
