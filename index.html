@@ -6,26 +6,80 @@
     <title>Amir's Information Aggregator v1.8</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        h1 {margin-bottom: 20px;}
-#refresh-button {margin-bottom: 20px;}
-        #feed-list { list-style-type: none; padding: 0; }
-        .feed-item { border-bottom: 1px solid #ccc; padding: 10px 0; }
-        .feed-item button { margin-left: 10px; }
-        .hidden { display: none; }
-        #feed-summary, #excluded-terms { margin-top: 20px; }
-        #error-message { color: red; }
-        .section { margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px; }
-        .subsection { margin-top: 20px; }
-        .form-group { margin-bottom: 15px; }
-        button { margin-right: 10px; }
-        h3 { margin-bottom: 10px; }
-    </style>
+<style>
+  body {
+    font-family: "Open Sans", sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  h1 {
+    margin-bottom: 28px;
+    font-size: 36px;
+    font-weight: bold;
+    line-height: 1.2;
+    color: #196695;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: opacity 0.3s ease-in-out;
+  }
+  h1:hover {
+    opacity: 0.8;
+  }
+  #feed-list {
+    list-style-type: none;
+    padding: 0;
+  }
+  .feed-item {
+    border-bottom: 1px solid #ccc;
+    padding: 10px 0;
+    border-radius: 4px;
+  }
+  .feed-item button {
+    margin-left: 10px;
+  }
+  .hidden {
+    display: none;
+  }
+  #feed-summary, #excluded-terms {
+    margin-top: 20px;
+  }
+  #error-message {
+    color: rgb(174, 8, 8);
+  }
+  .section {
+    margin-top: 30px;
+    border-top: 1px solid #ccc;
+    padding-top: 20px;
+    background-image: linear-gradient(to bottom, #fff, #f7f7f7);
+  }
+  .subsection {
+    margin-top: 20px;
+  }
+  .form-group {
+    margin-bottom: 15px;
+  }
+  button {
+    background-color: #f7f7f7;
+    color: #333;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-right: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  button:hover {
+    background-color: #e5e5e5;
+  }
+  h3 {
+    margin-bottom: 10px;
+  }
+</style>
 </head>
 <body>
     <h1>Amir's Information Aggregator v1.8</h1>
-    <button id="refresh-button" onclick="fetchFeeds()">Refresh</button>
     <div id="error-message"></div>
     <ul id="feed-list"></ul>
 <div id="feed-builder" class="section">
@@ -110,7 +164,7 @@
 }
 
 function setupAutoRefresh() {
-    const REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes in milliseconds
+    const REFRESH_INTERVAL = 5 * 60 * 1000; // 10 minutes in milliseconds
 
     function autoRefresh() {
         console.log('Auto-refreshing feeds...');
@@ -190,16 +244,14 @@ function setupAutoRefresh() {
     summary.appendChild(clearButton);
   }
 }
-
-
-        function removeFeed(index) {
-            feeds.splice(index, 1);
-            saveFeedsToStorage();
-            updateFeedSummary();
-            fetchFeeds();
-        }
-
-        function fetchFeeds() {
+   function removeFeed(index) {
+       feeds.splice(index, 1);
+       saveFeedsToStorage();
+       updateFeedSummary();
+       fetchFeeds();
+       displayFeeds();
+   }
+   function fetchFeeds() {
   feedItems = [];
   const errorMessage = document.getElementById('error-message');
   errorMessage.textContent = '';
@@ -211,9 +263,10 @@ function setupAutoRefresh() {
 
   console.log('Fetching feeds:', feeds);
 
+  const cacheBuster = new Date().getTime();
   const promises = feeds.map(feed =>
     $.ajax({
-      url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}`,
+      url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}&_=${cacheBuster}`,
       dataType: 'json'
     })
     .then(data => ({ status: 'fulfilled', value: data, feed }))
@@ -255,23 +308,26 @@ function setupAutoRefresh() {
 }
 
 
-        function processFeeds() {
-            console.log('Processing feeds. Total items:', feedItems.length);
+function processFeeds() {
+    console.log('Processing feeds. Total items:', feedItems.length);
 
-            // Remove duplicates and apply exclusions
-            feedItems = feedItems.filter((item, index, self) =>
-                index === self.findIndex(t => t.title === item.title && t.link === item.link) &&
-                !Array.from(excludedTerms).some(term => item.title.toLowerCase().includes(term.toLowerCase()))
-            );
+    const uniqueTitles = new Set();
 
-            // Sort by date
-            feedItems.sort((a, b) => moment(b.pubDate).diff(moment(a.pubDate)));
+    // Remove duplicates and apply exclusions
+    feedItems = feedItems.filter((item) => {
+        const title = item.title.split(' - ')[0].trim();
+        if (uniqueTitles.has(title)) return false;
+        uniqueTitles.add(title);
+        return !Array.from(excludedTerms).some(term => item.title.toLowerCase().includes(term.toLowerCase()))
+    });
 
-            console.log('After processing. Total items:', feedItems.length);
+    // Sort by date
+    feedItems.sort((a, b) => moment(b.pubDate).diff(moment(a.pubDate)));
 
-            displayFeeds();
-        }
+    console.log('After processing. Total items:', feedItems.length);
 
+    displayFeeds();
+}
         function displayFeeds() {
             const feedList = document.getElementById('feed-list');
             feedList.innerHTML = '';
