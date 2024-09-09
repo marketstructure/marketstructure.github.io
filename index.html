@@ -8,18 +8,18 @@
         body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
-            margin: 0;
-            padding: 20px;
             color: #333;
             max-width: 800px;
             margin: 0 auto;
+            padding: 20px;
         }
-        h1, h2 {
+        h1 {
             color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
         }
         ul {
-            list-style-type: none;
-            padding-left: 0;
+            padding-left: 20px;
         }
         li {
             margin-bottom: 10px;
@@ -31,23 +31,36 @@
         a:hover {
             text-decoration: underline;
         }
+        .spotlight {
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            background-color: #f9f9f9;
+        }
+        .spotlight h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
     </style>
 </head>
 <body>
     <h1>Asian Thematics & Market Structure</h1>
     <ul>
-        <li><a href="indexing.html">Indexing: Providers and Strategies</a></li>
         <li><a href="exchanges.html">Exchanges & Venues</a></li>
+        <li><a href="indexing.html">Indexing: Providers and Strategies</a></li>
+        <li><a href="etf_landscape.html">The ETF Landscape</a></li>
         <li><a href="digital_assets.html">Digital Assets: From Niche to Norm</a></li>
         <li><a href="pension_system.html">Pension System Developments</a></li>
         <li><a href="esg_in_asia.html">ESG in Asia</a></li>
-        <li><a href="etf_landscape.html">The ETF Landscape</a></li>
     </ul>
-    <h2>In the Spotlight</h2>
-    <ul>
-        <li><a href="evolving_allocations.html">Global Investors and China: Evolving Allocations</a></li>
-        <li><a href="renminbi_internationalisation.html">Renminbi Internationalisation 2.0</a></li>
-        <li><a href="consumer_sentiment.html">Consumer Sentiment</a></li>
-    </ul>
+    <div class="spotlight">
+        <h2>In the Spotlight</h2>
+        <ul>
+            <li><a href="evolving_allocations.html">Global Investors and China: Evolving Allocations</a></li>
+            <li><a href="renminbi_internationalisation.html">Renminbi Internationalisation 2.0</a></li>
+            <li><a href="consumer_sentiment.html">Consumer Sentiment</a></li>
+        </ul>
+    </div>
 </body>
 </html>
