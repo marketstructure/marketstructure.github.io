@@ -1,0 +1,1795 @@
+
+<html lang="en"><head><script>
+        // Remove 'let' to avoid redeclaration
+        feeds = ["https://news.google.com/rss/search?q=chinney&hl=en-US&gl=US&ceid=US:en","https://www.bing.com/news/search?q=chinney&format=rss","https://news.google.com/rss/search?q=%22hon%20kwok%20land%22&hl=en-US&gl=US&ceid=US:en","https://news.google.com/rss/search?q=allintitle%3AChina%20Property&hl=en-US&gl=US&ceid=US:en","https://news.google.com/rss/search?q=allintitle%3Ahong%20kong%20property&hl=en-US&gl=US&ceid=US:en","https://news.google.com/rss/search?q=intitle%3Aproptech%20Asia&hl=en-US&gl=US&ceid=US:en","https://news.google.com/rss/search?q=intitle%3A%22data%20center%22%20Asia&hl=en-US&gl=US&ceid=US:en"];
+        excludedTerms = new Set(["Love","Nigeria","hair"]);
+        requiredTerms = new Set([]);
+        let feedItems = [];
+        let hiddenItems = new Set();
+
+        function loadFeeds() {
+            console.log('Loading feeds...');
+            const storedHiddenItems = localStorage.getItem('hiddenItems');
+            if (storedHiddenItems) {
+                hiddenItems = new Set(JSON.parse(storedHiddenItems));
+            }
+
+            if (feeds.length > 0) {
+                fetchFeeds();
+            }
+        }
+
+        function setupAutoRefresh() {
+            const REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+            function autoRefresh() {
+                console.log('Auto-refreshing feeds...');
+                if (feeds.length > 0) {
+                    fetchFeeds();
+                }
+            }
+
+            console.log('Setting up auto-refresh...');
+            setInterval(autoRefresh, REFRESH_INTERVAL);
+            window.addEventListener('focus', autoRefresh);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFeeds();
+            setupAutoRefresh();
+        });
+
+        // Include other necessary functions
+        function fetchFeeds() {
+    feedItems = [];
+    const errorMessage = document.getElementById('error-message');
+    errorMessage.textContent = '';
+
+    if (feeds.length === 0) {
+        console.log('No feeds to fetch');
+        return;
+    }
+
+    console.log('Fetching feeds:', feeds);
+
+    const cacheBuster = new Date().getTime();
+    const apiKey = 'xfgfsjdb84ucakiobgoy2jozqyfpf6ufhmifyjvi';
+    const promises = feeds.map(feed =>
+        $.ajax({
+            url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}&api_key=${apiKey}&_=${cacheBuster}`,
+            dataType: 'json'
+        })
+        .then(data => ({ status: 'fulfilled', value: data, feed }))
+        .catch(error => ({ status: 'rejected', reason: error, feed }))
+    );
+
+    Promise.all(promises)
+        .then(results => {
+            console.log('Fetched results:', results);
+            const errors = [];
+            results.forEach(result => {
+                if (result.status === 'fulfilled' && result.value.status === 'ok' && Array.isArray(result.value.items)) {
+                    const items = result.value.items.map(item => ({
+                        ...item,
+                        feedTitle: result.value.feed.title
+                    }));
+                    feedItems = feedItems.concat(items);
+                } else {
+                    console.error('Error fetching feed:', result.feed, result.reason || result.value);
+                    errors.push(result.feed);
+                }
+            });
+            if (errors.length > 0) {
+                const errorMessageSummary = "Errors occurred while fetching some feeds.";
+                const errorMessagesDetailed = `<p>Failed to fetch:</p><ul style="list-style-type: disc;">${errors.map((message) => `<li>${message}</li>`).join("")}</ul>`;
+                errorMessage.textContent = errorMessageSummary;
+                const feedList = document.getElementById('feed-list');
+                const errorDiv = document.createElement('div');
+                errorDiv.innerHTML = errorMessagesDetailed;
+                feedList.appendChild(errorDiv);
+            }
+            try {
+                processFeeds();
+            } catch (error) {
+                console.error('Error processing feeds:', error);
+                errorMessage.textContent = 'An unexpected error occurred. Please check the console for more details.';
+            }
+        })
+        .catch(error => {
+            console.error('Unexpected error:', error);
+            errorMessage.textContent = 'An unexpected error occurred. Please check the console for more details.';
+        });
+}
+        function processFeeds() {
+        console.log('Processing feeds. Total items:', feedItems.length);
+
+        const uniqueTitles = new Set();
+
+        // Remove duplicates, apply exclusions and required terms
+        feedItems = feedItems.filter((item) => {
+            const title = item.title.split(' - ')[0].trim();
+            if (uniqueTitles.has(title)) return false;
+            uniqueTitles.add(title);
+
+            // Extract real URL from Bing News URL
+            if (item.link.includes('bing.com/news/apiclick.aspx')) {
+                const urlParams = new URLSearchParams(item.link.split('?')[1]);
+                const realUrl = urlParams.get('url');
+                if (realUrl) {
+                    item.link = decodeURIComponent(realUrl);
+                }
+            }
+            // Google News URLs are left as is
+
+            // Add feedTitle to the item if it's not already there
+            if (!item.feedTitle) {
+                item.feedTitle = item.source?.title || 'Unknown Source';
+            }
+
+            // Check for required terms (OR operation)
+            const hasRequiredTerm = requiredTerms.size === 0 || Array.from(requiredTerms).some(term => 
+                item.title.toLowerCase().includes(term.toLowerCase())
+            );
+
+            // Check for excluded terms
+            const hasExcludedTerm = Array.from(excludedTerms).some(term => 
+                item.title.toLowerCase().includes(term.toLowerCase())
+            );
+
+            return hasRequiredTerm && !hasExcludedTerm;
+        });
+
+        // Sort by date
+        feedItems.sort((a, b) => moment(b.pubDate).diff(moment(a.pubDate)));
+
+        console.log('After processing. Total items:', feedItems.length);
+
+        displayFeeds();
+    }
+        function displayFeeds() {
+                const feedList = document.getElementById('feed-list');
+                feedList.innerHTML = '';
+
+                if (feedItems.length === 0) {
+                    feedList.innerHTML = '<p>No items to display.</p>';
+                    return;
+                }
+
+                feedItems.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'feed-item';
+                    if (hiddenItems.has(item.link)) {
+                        li.classList.add('hidden');
+                    }
+
+                    // Extract title and source
+                    let title = item.title;
+                    let source;
+
+                    // Check if the title already contains a source (typical for Google News)
+                    if (item.title.includes(' - ')) {
+                        // Keep the title as is, it already has the source
+                        source = '';
+                    } else {
+                        // Extract domain name from the link
+                        try {
+                            const url = new URL(item.link);
+                            source = url.hostname.replace('www.', '');
+                        } catch (e) {
+                            source = 'Unknown Source';
+                        }
+                        // Append the source to the title
+                        title += ` - ${source}`;
+                    }
+
+                    li.innerHTML = `
+                        <strong>${title}</strong><br>
+                        <small>${moment(item.pubDate).format('MMMM D, YYYY, h:mm a')}</small><br>
+                        <a href="${item.link}" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, '${item.link}')">
+                            ${hiddenItems.has(item.link) ? 'Unhide' : 'Hide'}
+                        </button>
+                    `;
+                    feedList.appendChild(li);
+                });
+
+                console.log('Displayed feed items:', feedItems.length);
+            }
+        function toggleItemVisibility(button, itemLink) {
+                const listItem = button.closest('.feed-item');
+                if (hiddenItems.has(itemLink)) {
+                    hiddenItems.delete(itemLink);
+                    listItem.classList.remove('hidden');
+                    button.textContent = 'Hide';
+                } else {
+                    hiddenItems.add(itemLink);
+                    listItem.classList.add('hidden');
+                    button.textContent = 'Unhide';
+                }
+                saveHiddenItemsToStorage();
+            }
+        function saveHiddenItemsToStorage() {
+                localStorage.setItem('hiddenItems', JSON.stringify(Array.from(hiddenItems)));
+            }
+
+        // Remove updateFeedSummary, updateExcludedTerms, and updateRequiredTerms as they're not needed in the user version
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>James' Market Monitor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+<style>
+  body {
+    font-family: "Open Sans", sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  h1 {
+    margin-bottom: 28px;
+    font-size: 36px;
+    font-weight: bold;
+    line-height: 1.2;
+    color: #196695;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: opacity 0.3s ease-in-out;
+  }
+  h1:hover {
+    opacity: 0.8;
+  }
+  #feed-list {
+    list-style-type: none;
+    padding: 0;
+  }
+  .feed-item {
+    border-bottom: 1px solid #ccc;
+    padding: 10px 0;
+    border-radius: 4px;
+  }
+  .feed-item button {
+    margin-left: 10px;
+  }
+  .hidden {
+    display: none;
+  }
+  #feed-summary, #excluded-terms {
+    margin-top: 20px;
+  }
+  #error-message {
+    color: rgb(174, 8, 8);
+  }
+  .section {
+    margin-top: 30px;
+    border-top: 1px solid #ccc;
+    padding-top: 20px;
+    background-image: linear-gradient(to bottom, #fff, #f7f7f7);
+  }
+  .subsection {
+    border: 1px solid #ccc;
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+  .form-group {
+    margin-bottom: 15px;
+  }
+  button {
+    background-color: #f7f7f7;
+    color: #333;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-right: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  button:hover {
+    background-color: #e5e5e5;
+  }
+  h3 {
+    margin-bottom: 10px;
+  }
+
+  #generate-feed-btn {
+    background-color: #e6f3ff;
+  }
+
+  /* Styles for the hamburger menu */
+  .hamburger-menu {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 1000;
+  }
+
+  .menu-items {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 100%;
+    background-color: #f1f1f1;
+    padding: 20px;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+  }
+
+  .menu-items.active {
+    display: block;
+  }
+
+  #menu-items-list ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  #menu-items-list li {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  #menu-items-list li span {
+    margin-right: 10px;
+    word-break: break-all;
+  }
+
+  #menu-items-list button {
+    margin-left: 10px;
+  }
+
+  /* Add this new rule */
+  #feed-builder > div {
+    border: 1px solid #ccc;
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+
+  /* General menu styles */
+  .menu {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+
+  .menu-item {
+    padding: 10px 15px;
+    margin: 5px 0;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 16px;
+    transition: background-color 0.3s;
+  }
+
+  .menu-item:hover {
+    background-color: #e0e0e0;
+  }
+
+  .menu-item a {
+    text-decoration: none;
+    color: #333;
+  }
+
+  /* Special style for the Home item */
+  .menu-item.home {
+    background-color: #4CAF50;
+    color: white;
+    font-weight: bold; /* Make the Home item bold */
+  }
+
+  .menu-item.home a {
+    color: white;
+  }
+
+  #saved-configs ul {
+    list-style-type: none;
+    padding: 0;
+  }
+
+  #saved-configs li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 5px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+  }
+
+  #saved-configs li button {
+    margin-left: 10px;
+  }
+</style>
+<style>
+        .hamburger-menu {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+        }
+        .hamburger-menu > button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+        }
+        .hamburger-icon {
+            width: 30px;
+            height: 24px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .hamburger-icon span {
+            display: block;
+            height: 3px;
+            width: 100%;
+            background-color: #333;
+            border-radius: 3px;
+            transition: 0.3s;
+        }
+        .menu-items {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 250px;
+            height: 100%;
+            background-color: #f1f1f1;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+        .menu-items.active {
+            display: block;
+        }
+        .menu-items a {
+            display: block;
+            padding: 10px 0;
+            color: #333;
+            text-decoration: none;
+            font-size: 18px;
+        }
+        .menu-items a:hover {
+            background-color: #ddd;
+        }
+        .close-menu {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+    </style></head>
+<body>
+        <div class="hamburger-menu">
+            <button onclick="toggleMenu()">
+                <div class="hamburger-icon">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </button>
+            <div class="menu-items" id="menu-items">
+                <button class="close-menu" onclick="toggleMenu()">✕</button>
+                <a href="index.html">Home</a>
+                
+            </div>
+        </div>
+    
+    <h1>James' Market Monitor</h1>
+    <div id="error-message"></div>
+    <ul id="feed-list"><li class="feed-item">
+                        <strong>Data Center Fire Strikes Alibaba Cloud in Singapore - w.media</strong><br>
+                        <small>September 10, 2024, 8:48 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMid0FVX3lxTE85UG0xUGhtaEJVUC1wcnh6b0RZbUxjUHVURTRTWjNkWUlyZ2dsWW1xaHBZa0xwX2RhYXBjY21wUnhtTi1lVThXOEtmOFkzd1owMWk2ZE15Q0Nva1pPMTQxXy1rckdkUlBWOHhucDg0RUg3M2ZRWk5n?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMid0FVX3lxTE85UG0xUGhtaEJVUC1wcnh6b0RZbUxjUHVURTRTWjNkWUlyZ2dsWW1xaHBZa0xwX2RhYXBjY21wUnhtTi1lVThXOEtmOFkzd1owMWk2ZE15Q0Nva1pPMTQxXy1rckdkUlBWOHhucDg0RUg3M2ZRWk5n?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>China Property Shares Plunge After Removal From Stock Connect - Bloomberg</strong><br>
+                        <small>September 10, 2024, 8:09 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMisgFBVV95cUxQWk1zU0dRdi1lVkpsSXM2TF9KaE9BMTU2VzJwTlE5LWg4bUZBRmhJTHR6QVZUa3pkUFlJcHE2NjNuXzVWQkU2Y0dsOXg0MDlEbHk1OTZ4WlR4eFR1U3gzbDlzN2V2NHpzZE9SOG43dGFIVHRwQzZDT1d4WVVSNlA0U2FtWUJwY09tQm9wNXllSkUzTmRhY2g1MHB0WFVZai05MjhWaEFCQVZoRkpNaXY4aldB?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMisgFBVV95cUxQWk1zU0dRdi1lVkpsSXM2TF9KaE9BMTU2VzJwTlE5LWg4bUZBRmhJTHR6QVZUa3pkUFlJcHE2NjNuXzVWQkU2Y0dsOXg0MDlEbHk1OTZ4WlR4eFR1U3gzbDlzN2V2NHpzZE9SOG43dGFIVHRwQzZDT1d4WVVSNlA0U2FtWUJwY09tQm9wNXllSkUzTmRhY2g1MHB0WFVZai05MjhWaEFCQVZoRkpNaXY4aldB?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>China's property market has 'not found a bottom' yet, Standard Chartered CEO Bill Winters says - CNBC</strong><br>
+                        <small>September 9, 2024, 6:06 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMiogFBVV95cUxNaEhwS3ZDZk1TZjBndVZLbTB4aXJKRUgzUnhrRGR0MWpOc2RBb0tSUjQ0RUhVZmxraHlTSjcwNGYxTDQ4ekFtRnhjdWJfbzhpZTJ4MXVrbEFITmZlZm5jb2V5b0ZFY3lhX3pHMUgybW5sQmhyMXhSTXFOeERNdXUzYXBST0x3Z21Ock85bkhoUlkyOE5oWm1ZTzRMSU9DazFmWEHSAacBQVVfeXFMT0tFUWF3TV9PZWNFSV85dl9ZN3ROMGpjeXNYVGN1TXBYV1pmVFVocWRSa1RXcjc3RnJQcFA3VEhhLXhBM1VrSF9jY3V0bmRDNElpVW5UTldJMjZUQ1UwYk10b09nSC1pZUxaRHFpdW94ZGU4cVRxT3FsUWhCaTRYQkx6M2IySUI3ZnJKYV96S1NuY3I0N1BwZnF0YUVDYnZWV21fTU9Za3M?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMiogFBVV95cUxNaEhwS3ZDZk1TZjBndVZLbTB4aXJKRUgzUnhrRGR0MWpOc2RBb0tSUjQ0RUhVZmxraHlTSjcwNGYxTDQ4ekFtRnhjdWJfbzhpZTJ4MXVrbEFITmZlZm5jb2V5b0ZFY3lhX3pHMUgybW5sQmhyMXhSTXFOeERNdXUzYXBST0x3Z21Ock85bkhoUlkyOE5oWm1ZTzRMSU9DazFmWEHSAacBQVVfeXFMT0tFUWF3TV9PZWNFSV85dl9ZN3ROMGpjeXNYVGN1TXBYV1pmVFVocWRSa1RXcjc3RnJQcFA3VEhhLXhBM1VrSF9jY3V0bmRDNElpVW5UTldJMjZUQ1UwYk10b09nSC1pZUxaRHFpdW94ZGU4cVRxT3FsUWhCaTRYQkx6M2IySUI3ZnJKYV96S1NuY3I0N1BwZnF0YUVDYnZWV21fTU9Za3M?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>To buy or not to buy in Hong Kong’s volatile property market? - South China Morning Post</strong><br>
+                        <small>September 8, 2024, 8:30 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMiswFBVV95cUxOaXB5cnQ1ZmFfclR2ZmdWSmMzT0dZa29MVzVWc2xEdUdVbUVPZ1NmZm01U0Z0VnFMdHNtZGRrTjNxZXNyTWFmOFZMQ3NFLVNqeHlCRy1LYU14Mm1FRlJQSHJaMjZBYWEyYU9VZzg1aVhqc2Z4TkNaSVVkdjZ1NXd5bGZ4UGZmVUJ4WkZUellRZDFxVmV5cFNGRDZ0V2NMZkw3UjU5N01HNy1Ick9SZk8ybUFua9IBswFBVV95cUxNWHFfb3FqQ1RNRlN1ZTRldWJBQzJhWmkzYS1jOWt6VGNhMTdaal93U3M1NWRjRnFjdjd1a1JmMXpLMWY0OHY3Vi1NOUhsZG50eF84RDA4UTFpZ19SSDFnRkQ4OG9BNWNqZkJncmZXZFd6SmtpNXRyR1p0LTNHak1mZW5LOW9VSHp0b3NfNGlmQmlpZDdHVTFKQXRVSUFYTC1ja092OHU4TnBZcEIxY1VUck4yTQ?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMiswFBVV95cUxOaXB5cnQ1ZmFfclR2ZmdWSmMzT0dZa29MVzVWc2xEdUdVbUVPZ1NmZm01U0Z0VnFMdHNtZGRrTjNxZXNyTWFmOFZMQ3NFLVNqeHlCRy1LYU14Mm1FRlJQSHJaMjZBYWEyYU9VZzg1aVhqc2Z4TkNaSVVkdjZ1NXd5bGZ4UGZmVUJ4WkZUellRZDFxVmV5cFNGRDZ0V2NMZkw3UjU5N01HNy1Ick9SZk8ybUFua9IBswFBVV95cUxNWHFfb3FqQ1RNRlN1ZTRldWJBQzJhWmkzYS1jOWt6VGNhMTdaal93U3M1NWRjRnFjdjd1a1JmMXpLMWY0OHY3Vi1NOUhsZG50eF84RDA4UTFpZ19SSDFnRkQ4OG9BNWNqZkJncmZXZFd6SmtpNXRyR1p0LTNHak1mZW5LOW9VSHp0b3NfNGlmQmlpZDdHVTFKQXRVSUFYTC1ja092OHU4TnBZcEIxY1VUck4yTQ?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Hong Kong's property market grappling with sinking property values - Big News Network</strong><br>
+                        <small>September 6, 2024, 3:18 pm</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMirwFBVV95cUxQS2NhUG5HeFZtd040V1IzcndvejVpQzNjdnhTWVJ0dUpKUFJfc0F3a0VJczNZSHJDZ2RWU3JmWHZTWFFLRGdDWlNUOXNudjMtOEc3bnlmQlN3SWY3d20xSmt0US1sQXNfQWhpU3J5MktWeDBqNTBxYzVRczhRUl9xMkUtVlE1WTR3eUJWQ1JTaVlFSUx6MjBmY0o4SHJmdVo2RW1VN1hTTUNrUVZrSV9Z?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMirwFBVV95cUxQS2NhUG5HeFZtd040V1IzcndvejVpQzNjdnhTWVJ0dUpKUFJfc0F3a0VJczNZSHJDZ2RWU3JmWHZTWFFLRGdDWlNUOXNudjMtOEc3bnlmQlN3SWY3d20xSmt0US1sQXNfQWhpU3J5MktWeDBqNTBxYzVRczhRUl9xMkUtVlE1WTR3eUJWQ1JTaVlFSUx6MjBmY0o4SHJmdVo2RW1VN1hTTUNrUVZrSV9Z?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>3 years after Evergrande crisis, China’s key banks struggle to cap risk exposure - South China Morning Post</strong><br>
+                        <small>September 6, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMi2wFBVV95cUxPMzBWM29BQ196ZzB4LTJaMEJkZFBXb2VKaGNSem8teV9XOWx1a1VTanBkbEVRRDNTQUpoZXdCWlFTbHVEa2RFSzk1Z2Q0eUd6V1J2c0VvTVRVRVdQZnJIenJZbUZQRHgyRmZRbmMxRks1U1FKdWtyT0FObl9PdXVVWnRYQlA3Y3FuVXFHSFBaQ1lrUlppQWF5OFRTaEJKUzhuZ0F3UUxoaVdRbXh2cWl6a2NZUlZRSGVCMjc2ZnVDRlJ3a2dCR3BodFNQSmdMNC03NDNrNi1DZnlKdG_SAdsBQVVfeXFMTlo1UHNsQXRqZmJwVHV3LWJEQkpLQXFJZy0yWnpVTWVmb05RUUxQV2NSZTdCWng2M0pPOFFRejdTLVRlTkNmbEItSzNrYWJCUmE2Z1NadTdkV2NVUDhZeWdGcUNZTGt4N1lXMkszV0NBak93TEk4bzI4RC1lY3NYekp3QzhEcTJET1Utb3JBNl9vbjdXeE1pWHZ5c2JEeDBla2ZSdnJpQlZCMERLQV95WkNHUENQWEZITXZlSDF0dlNNbEVPQXJWcndObDlhOERFa1hGdHhSanNBZDdn?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMi2wFBVV95cUxPMzBWM29BQ196ZzB4LTJaMEJkZFBXb2VKaGNSem8teV9XOWx1a1VTanBkbEVRRDNTQUpoZXdCWlFTbHVEa2RFSzk1Z2Q0eUd6V1J2c0VvTVRVRVdQZnJIenJZbUZQRHgyRmZRbmMxRks1U1FKdWtyT0FObl9PdXVVWnRYQlA3Y3FuVXFHSFBaQ1lrUlppQWF5OFRTaEJKUzhuZ0F3UUxoaVdRbXh2cWl6a2NZUlZRSGVCMjc2ZnVDRlJ3a2dCR3BodFNQSmdMNC03NDNrNi1DZnlKdG_SAdsBQVVfeXFMTlo1UHNsQXRqZmJwVHV3LWJEQkpLQXFJZy0yWnpVTWVmb05RUUxQV2NSZTdCWng2M0pPOFFRejdTLVRlTkNmbEItSzNrYWJCUmE2Z1NadTdkV2NVUDhZeWdGcUNZTGt4N1lXMkszV0NBak93TEk4bzI4RC1lY3NYekp3QzhEcTJET1Utb3JBNl9vbjdXeE1pWHZ5c2JEeDBla2ZSdnJpQlZCMERLQV95WkNHUENQWEZITXZlSDF0dlNNbEVPQXJWcndObDlhOERFa1hGdHhSanNBZDdn?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>News | CPP partners with Blackstone on huge data center deal in Asia-Pacific region - CoStar Group</strong><br>
+                        <small>September 5, 2024, 10:06 pm</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMiuAFBVV95cUxPT045NXY2UnFYS0hHZTVqLU1VZDJXVlNfYlREdnNKbUJOYWthN3M5WXNneHh6elJaT1RHdW5LZm5YZmt3ZmxKN2VuclMwNC0weU1jRVFMaUhRNWZhd3htVlZ1YU1pcEl4dUdRaHBPZ3piNjNlZ2NDdlVXUkFpaEpiQl9VanNrVHFaYmZRWFNLYUt5TEhMdFpwY0xfNWF1MzBuRmZGNnc3aUdPekRFdjd1VUdDMGJzc2NU?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMiuAFBVV95cUxPT045NXY2UnFYS0hHZTVqLU1VZDJXVlNfYlREdnNKbUJOYWthN3M5WXNneHh6elJaT1RHdW5LZm5YZmt3ZmxKN2VuclMwNC0weU1jRVFMaUhRNWZhd3htVlZ1YU1pcEl4dUdRaHBPZ3piNjNlZ2NDdlVXUkFpaEpiQl9VanNrVHFaYmZRWFNLYUt5TEhMdFpwY0xfNWF1MzBuRmZGNnc3aUdPekRFdjd1VUdDMGJzc2NU?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Blackstone, CPP shake up APAC data center landscape with $16bn acquisition - Alternatives Watch</strong><br>
+                        <small>September 5, 2024, 11:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMipgFBVV95cUxPdlBKaG1vMTFvWmMzSlRFblgtc1ZzX09lWEVieHVwSEtYR1VGSXYzSE5fNWNzc3VpNE1GbzNxU3FVQmU0WWlVQUd1ZTM3ekFWYnh1NXJhc0o1dURVNjIwSVlkbVhFem1ha1RMVkM5dUxQaW83STBpTEhhc1FvVEpZTXZKYVFKTFhYYWxIYzRCd1dWbF9LOGpGbzFVMGxUS0o5UmU4ZGhR?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMipgFBVV95cUxPdlBKaG1vMTFvWmMzSlRFblgtc1ZzX09lWEVieHVwSEtYR1VGSXYzSE5fNWNzc3VpNE1GbzNxU3FVQmU0WWlVQUd1ZTM3ekFWYnh1NXJhc0o1dURVNjIwSVlkbVhFem1ha1RMVkM5dUxQaW83STBpTEhhc1FvVEpZTXZKYVFKTFhYYWxIYzRCd1dWbF9LOGpGbzFVMGxUS0o5UmU4ZGhR?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>China property developer Country Garden removes PwC as auditor - Reuters.com</strong><br>
+                        <small>September 5, 2024, 10:32 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMikwFBVV95cUxQeHRFRC1ybzRiZmgzTTFsN1JiOFEySS1RYUExb01WZ2FTdGc5VXlMRzVNWWhid3IzZHB0aHk0VkNSM1ptLWg5RUxvUUNTa0d3QUNGZWtiTDlTeTBHeU5yb1pwYTJ2c09lc3pWbWxnOHFFbW8xeE1nd01GLXRTZEhaVjBJY29LNGJEcWlBLUN5RDVULU0?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMikwFBVV95cUxQeHRFRC1ybzRiZmgzTTFsN1JiOFEySS1RYUExb01WZ2FTdGc5VXlMRzVNWWhid3IzZHB0aHk0VkNSM1ptLWg5RUxvUUNTa0d3QUNGZWtiTDlTeTBHeU5yb1pwYTJ2c09lc3pWbWxnOHFFbW8xeE1nd01GLXRTZEhaVjBJY29LNGJEcWlBLUN5RDVULU0?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Chinney Kin Wing Holdings Limited (1556.HK) - finance.yahoo.com</strong><br>
+                        <small>September 5, 2024, 7:26 am</small><br>
+                        <a href="https://finance.yahoo.com/quote/1556.HK/news/" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://finance.yahoo.com/quote/1556.HK/news/')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Chinney Kin Wing Holdings Ltd Shs Reg S - morningstar.com</strong><br>
+                        <small>September 4, 2024, 5:00 pm</small><br>
+                        <a href="https://www.morningstar.com/stocks/xhkg/01556/price-fair-value" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://www.morningstar.com/stocks/xhkg/01556/price-fair-value')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Blackstone Is Buying Data Center Operator AirTrunk in a $16B Deal—Here's Why - Investopedia</strong><br>
+                        <small>September 4, 2024, 12:07 pm</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMirgFBVV95cUxQcjlSaUxQdHlMN3NCTDBXV0UyNTZLclE2NlJNVjRrRFJWaEhIQW9CeUFKR09qQi1GRWM1VWVvb0NYcGQtcWIyRU54b1pKVFFhM01OWlRKWmtqOVY0OWMyWXR2UENmUWxmSjktRFhzdTJNTTQ1SXBsdWRNb0hKeVI4aU1mSzE1eHlUd0pDQzAySTZOMjdDUWs2MDgyZUpMOHFzOFE3eEN0Ty03a0lvMGc?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMirgFBVV95cUxQcjlSaUxQdHlMN3NCTDBXV0UyNTZLclE2NlJNVjRrRFJWaEhIQW9CeUFKR09qQi1GRWM1VWVvb0NYcGQtcWIyRU54b1pKVFFhM01OWlRKWmtqOVY0OWMyWXR2UENmUWxmSjktRFhzdTJNTTQ1SXBsdWRNb0hKeVI4aU1mSzE1eHlUd0pDQzAySTZOMjdDUWs2MDgyZUpMOHFzOFE3eEN0Ty03a0lvMGc?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Blackstone and CPP to acquire APAC data center firm AirTrunk for AU$24bn - DatacenterDynamics</strong><br>
+                        <small>September 4, 2024, 10:50 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMitgFBVV95cUxPZkFWRnZzbWd5OWZPRUtZZ1hqcGVtc2ZJeVVqMjV4N3g3d25Tdl9lcmVOZWlKY2I4OXQ4OGJrSHdkTGZQNUQwanFvb2ZnTkl1eldGZmVrcGNVcURCS3JRYUY5enoxZVg3NGxvQ0NVMkxxclROa2dDU244WmcydzNjMmJWQTZHbG1paXNQcXdkRXN0cUYzQWtEUEZYV0lvU2FnbFFYNFUwRUlBTzF4MVhZVUN0MzNvUQ?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMitgFBVV95cUxPZkFWRnZzbWd5OWZPRUtZZ1hqcGVtc2ZJeVVqMjV4N3g3d25Tdl9lcmVOZWlKY2I4OXQ4OGJrSHdkTGZQNUQwanFvb2ZnTkl1eldGZmVrcGNVcURCS3JRYUY5enoxZVg3NGxvQ0NVMkxxclROa2dDU244WmcydzNjMmJWQTZHbG1paXNQcXdkRXN0cUYzQWtEUEZYV0lvU2FnbFFYNFUwRUlBTzF4MVhZVUN0MzNvUQ?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Chinney Alliance Plans Crucial Loan Approval Meeting - TipRanks</strong><br>
+                        <small>September 4, 2024, 10:43 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMipwFBVV95cUxPdG41dnE3dy1BdXFlWV9Jb1pmQW4wVm1QR29BZkY3VlV3RjdWQ1ZZbmdRT3Y2SDBBdWJVdnJGWlRWMGdIb0o3VVBpZVNhdURVMHA2WXo5SmV5VnI4S1Q1c25LVUZrdEpsX3oza2dSVmV6UWhZV0xsZlpaRGNnLW5QdXoydEZmMHhfU1pKaUJ5Nlg0MjAtNEVyZzB3Rm0tLTdVRVo4TVV1WQ?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMipwFBVV95cUxPdG41dnE3dy1BdXFlWV9Jb1pmQW4wVm1QR29BZkY3VlV3RjdWQ1ZZbmdRT3Y2SDBBdWJVdnJGWlRWMGdIb0o3VVBpZVNhdURVMHA2WXo5SmV5VnI4S1Q1c25LVUZrdEpsX3oza2dSVmV6UWhZV0xsZlpaRGNnLW5QdXoydEZmMHhfU1pKaUJ5Nlg0MjAtNEVyZzB3Rm0tLTdVRVo4TVV1WQ?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Chinney Kin Wing Holdings Calls for Loan Approval Meeting - TipRanks</strong><br>
+                        <small>September 4, 2024, 10:43 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMirgFBVV95cUxQNUdXZ1drUlgyVVEzNVlydHRuM2x2aENKSDhZNElCUXNQTUtQTFE4TTdvcmNPZ0k4a3ZXRVVEd0pqSF9TSXBpbW1qUDZqOE5IMWNUZ0x3QUpUSE4wMDZLQjFYZHFFcmJNWmlWbkUzdmthUFhHTWU0MG9fUTZGRW15TkxyRVpUZ3VyaTExRWotZHQtX1A2QmxKRjd1X3RrMklvUGpVcWRpMEZQWVZrZ2c?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMirgFBVV95cUxQNUdXZ1drUlgyVVEzNVlydHRuM2x2aENKSDhZNElCUXNQTUtQTFE4TTdvcmNPZ0k4a3ZXRVVEd0pqSF9TSXBpbW1qUDZqOE5IMWNUZ0x3QUpUSE4wMDZLQjFYZHFFcmJNWmlWbkUzdmthUFhHTWU0MG9fUTZGRW15TkxyRVpUZ3VyaTExRWotZHQtX1A2QmxKRjd1X3RrMklvUGpVcWRpMEZQWVZrZ2c?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Chinney Kin Wing Schedules Crucial Shareholder Meeting - TipRanks</strong><br>
+                        <small>September 4, 2024, 10:08 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMiqgFBVV95cUxPbi1wNUJRMzlWb01RMWl0UU9UeHE2VS0wOUoxelV2bmhVbGJLY1M4R1BmWmJUMXNGUWFPNHlCb2hFanQwSXlnNnFPR0pwV1BBN254YVlkYkZfNzlQNXJ1dTVlYnprUElrMnR1R3prY3M3MVJIZ2EzQldJdUU3VkJpSFViTzBkdXlvNkEwa21PSjl0WnlnWllzaXBXNzNXaUZ0dGFZLS1KcDlNZw?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMiqgFBVV95cUxPbi1wNUJRMzlWb01RMWl0UU9UeHE2VS0wOUoxelV2bmhVbGJLY1M4R1BmWmJUMXNGUWFPNHlCb2hFanQwSXlnNnFPR0pwV1BBN254YVlkYkZfNzlQNXJ1dTVlYnprUElrMnR1R3prY3M3MVJIZ2EzQldJdUU3VkJpSFViTzBkdXlvNkEwa21PSjl0WnlnWllzaXBXNzNXaUZ0dGFZLS1KcDlNZw?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Chinney Alliance Group Ltd. - wsj.com</strong><br>
+                        <small>September 2, 2024, 5:00 pm</small><br>
+                        <a href="https://www.wsj.com/market-data/quotes/HK/385" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://www.wsj.com/market-data/quotes/HK/385')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Data center capacity in Asia, North America grew 10% in H1 - Light Reading</strong><br>
+                        <small>September 2, 2024, 2:46 pm</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMinwFBVV95cUxOajRtX3FCUmE1MEJlb2xmSzlFdDdoN09sSHV2RUUtaUZwcmlkaEFfbnJnM1Y0YjhEekNvV0xtSGhoZGxCNlU0cTk2OWlGdG9xckpwLXAxaFd5UnEtdHVRaXlBLTdvams4aHdyRnhITmR3WDNHS3Bnc1hFQWxtdndyNkRUc0l1amZZUmV6NXNKdk82MmJjcnRLb0NrN1VPQXM?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMinwFBVV95cUxOajRtX3FCUmE1MEJlb2xmSzlFdDdoN09sSHV2RUUtaUZwcmlkaEFfbnJnM1Y0YjhEekNvV0xtSGhoZGxCNlU0cTk2OWlGdG9xckpwLXAxaFd5UnEtdHVRaXlBLTdvams4aHdyRnhITmR3WDNHS3Bnc1hFQWxtdndyNkRUc0l1amZZUmV6NXNKdk82MmJjcnRLb0NrN1VPQXM?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>New World Development shares tumble as Hong Kong property woes bite - Nikkei Asia</strong><br>
+                        <small>September 2, 2024, 9:15 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMiuAFBVV95cUxNcmlYYkl0dGh3UDNNbGE3RVBtQksxMm94TFVMTFlwd1NPdHdBdlJENUlnXzUxX0Y4ajVKTkctRzM1c0xsdHhIUElyMmcxZGVHNkg5OHoyYXZ1QjBySF9kVUh4Y2N1bDV0WGh1U1JvM2daV2ZQV1hZMjJqZWJWcnlLYkRuTjlOQTZvckVERTJpQ3JsaXhqcElnd1lCd1FPSVJQZnpvV1JtVHNtcWRWUG52VFd0dW1nQ3pf?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMiuAFBVV95cUxNcmlYYkl0dGh3UDNNbGE3RVBtQksxMm94TFVMTFlwd1NPdHdBdlJENUlnXzUxX0Y4ajVKTkctRzM1c0xsdHhIUElyMmcxZGVHNkg5OHoyYXZ1QjBySF9kVUh4Y2N1bDV0WGh1U1JvM2daV2ZQV1hZMjJqZWJWcnlLYkRuTjlOQTZvckVERTJpQ3JsaXhqcElnd1lCd1FPSVJQZnpvV1JtVHNtcWRWUG52VFd0dW1nQ3pf?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Hong Kong Property Pain Worsens for New World and Scion CEO - Bloomberg</strong><br>
+                        <small>September 2, 2024, 8:48 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMixgFBVV95cUxQWFRtcHdhajk0Y3dJQTR5VkY0cVpOcmdadFBmaHVXUU1kRG1sbXBuTmpfQXV0X1VSUHpuTnRJWVR1QlVTR3ZBQmd1R2lPMUhPVmZFMUVlQ25BVlBEeWRkS1F2aUVUWnE5bm43UzV3SzRfSWh2UXlvOVNVN2NiaG5NM0ktWXBGZGJ0bmxtcVgwTU1KWW1QSngxc0dLR2JDeDRkV2FWTkdTSFBkZ3o4MEVtVVV4d0NpLTlyN05RZnlDZENCbUZHTHc?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMixgFBVV95cUxQWFRtcHdhajk0Y3dJQTR5VkY0cVpOcmdadFBmaHVXUU1kRG1sbXBuTmpfQXV0X1VSUHpuTnRJWVR1QlVTR3ZBQmd1R2lPMUhPVmZFMUVlQ25BVlBEeWRkS1F2aUVUWnE5bm43UzV3SzRfSWh2UXlvOVNVN2NiaG5NM0ktWXBGZGJ0bmxtcVgwTU1KWW1QSngxc0dLR2JDeDRkV2FWTkdTSFBkZ3o4MEVtVVV4d0NpLTlyN05RZnlDZENCbUZHTHc?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>China Property Slump Spurs Local Governments’ Quest for Cash - The Wall Street Journal</strong><br>
+                        <small>September 2, 2024, 6:11 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMipwFBVV95cUxPX0taeTEzWHZMYVpNZHl2UkxtbFRHRFZEWnVzY2E3WkxCSkgweWIxYTZUM0c5SU1yTWRMV2lwc19FNldDZXNaQTRyZVYtRkJBb3hGUG9VdGJFVjZzZlQ0TlQ3V0FDYTlYY0lDdXBzWkpWLTBDZWFKUnVVeTI0UjVnQjQtcU1nektHZW5vM3g0VGp1UzkzMDJ4M21ueWhnSTRRTE45aHFsOA?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMipwFBVV95cUxPX0taeTEzWHZMYVpNZHl2UkxtbFRHRFZEWnVzY2E3WkxCSkgweWIxYTZUM0c5SU1yTWRMV2lwc19FNldDZXNaQTRyZVYtRkJBb3hGUG9VdGJFVjZzZlQ0TlQ3V0FDYTlYY0lDdXBzWkpWLTBDZWFKUnVVeTI0UjVnQjQtcU1nektHZW5vM3g0VGp1UzkzMDJ4M21ueWhnSTRRTE45aHFsOA?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>CapitaLand: Powering Asia-Pacific’s data center growth - PERE</strong><br>
+                        <small>September 2, 2024, 1:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMihAFBVV95cUxOUGFlNlRJM0NrSTZBMHBmN2VpRkE4dFJRR29NalNfTmhKUGd6eGNhR1lZUnJfN09CVXVRQzI3VHgtQ25rNTFkX2pWejF6cldjYkprX2xMOVFZcHdxMzlRTkxGV0RzelFoTTFVd2tYc2lyeHE5TmJhdlJJVnBiNFJ4OGNQeGo?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMihAFBVV95cUxOUGFlNlRJM0NrSTZBMHBmN2VpRkE4dFJRR29NalNfTmhKUGd6eGNhR1lZUnJfN09CVXVRQzI3VHgtQ25rNTFkX2pWejF6cldjYkprX2xMOVFZcHdxMzlRTkxGV0RzelFoTTFVd2tYc2lyeHE5TmJhdlJJVnBiNFJ4OGNQeGo?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Summary of listed companies announcements (2) - etnet.com.hk</strong><br>
+                        <small>September 1, 2024, 6:24 pm</small><br>
+                        <a href="https://www.etnet.com.hk/www/eng/warrants/realtime/quote_news_detail.php?newsid=ETE34090283&amp;code=23091" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://www.etnet.com.hk/www/eng/warrants/realtime/quote_news_detail.php?newsid=ETE34090283&amp;code=23091')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Hong Kong property developer warns of first annual loss in 20 years - Financial Times</strong><br>
+                        <small>September 1, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMicEFVX3lxTFBhemFaRHlTeDd2Sk5iRGlwWE5IVVdsQ0JnR3VlbUZOcXVGVG53dHlVcE1hUmYzLTBRM2pGRl9OZlp4SjJ3VkZ6eGNGS0hoNFpDbHpXNzNqMndyNGNaSC03YVhqMG52NVNCVDRPUWdqVmQ?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMicEFVX3lxTFBhemFaRHlTeDd2Sk5iRGlwWE5IVVdsQ0JnR3VlbUZOcXVGVG53dHlVcE1hUmYzLTBRM2pGRl9OZlp4SjJ3VkZ6eGNGS0hoNFpDbHpXNzNqMndyNGNaSC03YVhqMG52NVNCVDRPUWdqVmQ?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Hon Kwok Land Shareholders Approve Key Resolutions - TipRanks</strong><br>
+                        <small>August 30, 2024, 11:27 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMipAFBVV95cUxOTHU3TU9raTRrem1HQ19DNElELVFHS1JSUGFDenhZSGtRY0NnVzFFQVVOUmh6WnRHV0RTb0dBa2Q4YkI1eEtrbEpkQ1hmZkI5Slh6WTFDMU1xLUdNVUZLYkpoU0tZZk13OVBubW1oR2Nib3ExLUZPSWJvM0tPVTRsRFJYMlNJYnlrYXNjNFFEaTRWUkJFQVFlc21DalMxNzUyQlNGaA?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMipAFBVV95cUxOTHU3TU9raTRrem1HQ19DNElELVFHS1JSUGFDenhZSGtRY0NnVzFFQVVOUmh6WnRHV0RTb0dBa2Q4YkI1eEtrbEpkQ1hmZkI5Slh6WTFDMU1xLUdNVUZLYkpoU0tZZk13OVBubW1oR2Nib3ExLUZPSWJvM0tPVTRsRFJYMlNJYnlrYXNjNFFEaTRWUkJFQVFlc21DalMxNzUyQlNGaA?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Chinney Kin Wing Holdings Amends Agreement Terms - TipRanks</strong><br>
+                        <small>August 29, 2024, 10:47 pm</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMiogFBVV95cUxQY042QmxYd1FGUXVGaHd4V2ZPMGVzdG9XMm5CR200aUxRU2ZIZHg0VldUZXZpMDFSVTI5VDlxbWcxTFdaaGZOeEFqV0V3QkRxeWpESnZfN0tMTHRQVEZvakktaVB5RG5rVVVldHB5VEdjNC03azVTR09ITEx1NW82d0o5eExxUkg5NWQ1Y21seHpWMzcyQlUxRUZWTEVXaGNzSmc?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMiogFBVV95cUxQY042QmxYd1FGUXVGaHd4V2ZPMGVzdG9XMm5CR200aUxRU2ZIZHg0VldUZXZpMDFSVTI5VDlxbWcxTFdaaGZOeEFqV0V3QkRxeWpESnZfN0tMTHRQVEZvakktaVB5RG5rVVVldHB5VEdjNC03azVTR09ITEx1NW82d0o5eExxUkg5NWQ1Y21seHpWMzcyQlUxRUZWTEVXaGNzSmc?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Sino Land Full Year 2024 Earnings: Misses Expectations - Simply Wall St</strong><br>
+                        <small>August 29, 2024, 1:45 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMi6AFBVV95cUxONk5vS0pWd0R2YTBJQVBhRzVmcWJkcF92bS1qNVUwM2ZVMGJ2ZzZlRHY4Znp2RHp0Wk9WWGVpRm5wLVpBd3BENEZRVDNWTG43emdUdkJETU5GQzNDeTVoZWRuak9Sd190YTlzUEt1dE9nSk5wQWhLMDFJRk05UHRfUE5HOWMwRElXU05XZm5PbUdxUk51dW5kRC1QbkJIOU54VVd5ZFJQRVhMODFOUnVKZnZGTWMwNmFRdHBnQXdzM1Fycjh3WWRfTWpmXzRfcGtPT0hSQUV2cGVCeU1WS2dnZVRZOG1RQUtY0gHuAUFVX3lxTFBfcXd0ODl1NjRCODRNTWYwNTRleHg5YjllZlV4UGdBUEZ5YWs3MWtCT2VZM3JXTlF2eGdHeVdtcTJ1RTJyRUY4Sl9nMHRXT0Z6a0FMd0tFOEhZTHlrcDBCU19famlxTE9JU0lUVXBkY1B0aHExODVxRWpGNWU0MGItR1o4SHdOOXRrOGZfaHlncFZlVXZYd2l1eXg2Z3V1Z0F3c25PYUhmbFdlcm54LVBKRDZCXzBocnZOR0lrUFpNbll5LTBkRUtxdWItZzY3Yi1iUW92d25ZcVVwcnEzWHBDbmV4dDRTTHE0UFA4bEE?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMi6AFBVV95cUxONk5vS0pWd0R2YTBJQVBhRzVmcWJkcF92bS1qNVUwM2ZVMGJ2ZzZlRHY4Znp2RHp0Wk9WWGVpRm5wLVpBd3BENEZRVDNWTG43emdUdkJETU5GQzNDeTVoZWRuak9Sd190YTlzUEt1dE9nSk5wQWhLMDFJRk05UHRfUE5HOWMwRElXU05XZm5PbUdxUk51dW5kRC1QbkJIOU54VVd5ZFJQRVhMODFOUnVKZnZGTWMwNmFRdHBnQXdzM1Fycjh3WWRfTWpmXzRfcGtPT0hSQUV2cGVCeU1WS2dnZVRZOG1RQUtY0gHuAUFVX3lxTFBfcXd0ODl1NjRCODRNTWYwNTRleHg5YjllZlV4UGdBUEZ5YWs3MWtCT2VZM3JXTlF2eGdHeVdtcTJ1RTJyRUY4Sl9nMHRXT0Z6a0FMd0tFOEhZTHlrcDBCU19famlxTE9JU0lUVXBkY1B0aHExODVxRWpGNWU0MGItR1o4SHdOOXRrOGZfaHlncFZlVXZYd2l1eXg2Z3V1Z0F3c25PYUhmbFdlcm54LVBKRDZCXzBocnZOR0lrUFpNbll5LTBkRUtxdWItZzY3Yi1iUW92d25ZcVVwcnEzWHBDbmV4dDRTTHE0UFA4bEE?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Hon Kwok Land Investment Company (HKG:160) Is Reducing Its Dividend To HK$0.0625 - Simply Wall St</strong><br>
+                        <small>August 28, 2024, 6:28 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMihwJBVV95cUxOSXp1RFhYcnIyZmRSa3hPelM0cVB3U004T2J0Q2kzeDh6Ull5dTVEUnRnRmNGb0RVY1dBOUF4NUtlMm1Eb2dBUzRqdzVQXzNqcVY5VDJyQUhFc2Y1dmlMcnBFVTFYU2lybVVWTUdjZU5EQkdkVi1KenFrVDVCV0JrRGtjZDZUNmZyYWt4RVMzeWdHcUMtRS1JZDhCdHNrUzg5QjdnZFVTaFVVR2JLSGtLR1I3RTlsZjhmMFA1QzdpVUJKRkgtUzlSYlh4NzZXdnhiOV90bUZvZklCRnliU3MyS2xxRkVoTFB0Q0Y2LVUyX3paeWJjbXctdkQtcWNYNEdXeTZEeDBvRdIBjAJBVV95cUxQUXZRSy14RVZISVAtRE80d0ctVVFGbWtlQTc1cFdaSXAzWEl4VER2LUhXYVV6N1ByVk9jSFNIYzFJLUJveGVweUNoRWNSalNXbDhReVl5aHk4Q25DR3RlM1F6R1M3UVZ4ejNjZmxBODJOellnQ1IyUTBpcDBpYzd5NzNBZkJLdjltMzJKUlM3MnZZRU5BLUlTQlljSG0xSE1ZckY3bEd6YW9Sa1V4LTdhOVFvOURQemJQZWVlUFBueWRkT254SWQtN0d1TFpwOVhNUVZ3dWIyUmN4SlNwZ0tTRHdKbWNYdnV6WHFMajgxcjc4NDk4eEkwa3JFTTZpUms5UFBsTUJOMlBhLWNo?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMihwJBVV95cUxOSXp1RFhYcnIyZmRSa3hPelM0cVB3U004T2J0Q2kzeDh6Ull5dTVEUnRnRmNGb0RVY1dBOUF4NUtlMm1Eb2dBUzRqdzVQXzNqcVY5VDJyQUhFc2Y1dmlMcnBFVTFYU2lybVVWTUdjZU5EQkdkVi1KenFrVDVCV0JrRGtjZDZUNmZyYWt4RVMzeWdHcUMtRS1JZDhCdHNrUzg5QjdnZFVTaFVVR2JLSGtLR1I3RTlsZjhmMFA1QzdpVUJKRkgtUzlSYlh4NzZXdnhiOV90bUZvZklCRnliU3MyS2xxRkVoTFB0Q0Y2LVUyX3paeWJjbXctdkQtcWNYNEdXeTZEeDBvRdIBjAJBVV95cUxQUXZRSy14RVZISVAtRE80d0ctVVFGbWtlQTc1cFdaSXAzWEl4VER2LUhXYVV6N1ByVk9jSFNIYzFJLUJveGVweUNoRWNSalNXbDhReVl5aHk4Q25DR3RlM1F6R1M3UVZ4ejNjZmxBODJOellnQ1IyUTBpcDBpYzd5NzNBZkJLdjltMzJKUlM3MnZZRU5BLUlTQlljSG0xSE1ZckY3bEd6YW9Sa1V4LTdhOVFvOURQemJQZWVlUFBueWRkT254SWQtN0d1TFpwOVhNUVZ3dWIyUmN4SlNwZ0tTRHdKbWNYdnV6WHFMajgxcjc4NDk4eEkwa3JFTTZpUms5UFBsTUJOMlBhLWNo?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Chinney Alliance Group Reports Strong Half-Year Turnaround - TipRanks</strong><br>
+                        <small>August 26, 2024, 3:14 pm</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMirwFBVV95cUxPUTlHdjNiU3NxWTB2NFoxblZPYVVpLVI2MDhMa21xU3hISlBZYnJyVk9KZGphMVZhbHZaUkJlbkJaeWhqT05PVzNOUTJ0TDJJME5rNzhRdmxyc0t2aDltcTQ4TkxKaElhS0J3QUp4a2F1X3c3Qk41ampnMVZMOUhhSEpMc3VfWUxqV01qLWw3Uk85T1NFNUlSTU16RUVLQTJsanpiUFB0dHhua0VILUxv?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMirwFBVV95cUxPUTlHdjNiU3NxWTB2NFoxblZPYVVpLVI2MDhMa21xU3hISlBZYnJyVk9KZGphMVZhbHZaUkJlbkJaeWhqT05PVzNOUTJ0TDJJME5rNzhRdmxyc0t2aDltcTQ4TkxKaElhS0J3QUp4a2F1X3c3Qk41ampnMVZMOUhhSEpMc3VfWUxqV01qLWw3Uk85T1NFNUlSTU16RUVLQTJsanpiUFB0dHhua0VILUxv?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>China's Property Rescue Plan Isn't Working - Newsweek</strong><br>
+                        <small>August 26, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMihAFBVV95cUxOV0dXb2Y3SGtRTkVjcVVzNjFod2M4aGVvSWJ6RWthWkNkcl9iREhRNWZQYXFRMzNoMVkxMHkxM09BNlVYWHNrZjZuRWpOR2ZNVTg4UFhfYkl0T3FkalZKemNCSkxVYVdSYS1abzRlREhqZDctNmpxaXRMWkdScGlSaFNRdzg?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMihAFBVV95cUxOV0dXb2Y3SGtRTkVjcVVzNjFod2M4aGVvSWJ6RWthWkNkcl9iREhRNWZQYXFRMzNoMVkxMHkxM09BNlVYWHNrZjZuRWpOR2ZNVTg4UFhfYkl0T3FkalZKemNCSkxVYVdSYS1abzRlREhqZDctNmpxaXRMWkdScGlSaFNRdzg?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>A New ‘Band-Aid’ for China’s Property Market: Can It Stop the Bleeding? - The Diplomat</strong><br>
+                        <small>August 26, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMioAFBVV95cUxObUdRamd4ZllSakpucElKSmJqNDZ6NEYtdjJmVUlEU2dCUU1OekNkcGZvRGgxYVJvYzhhMnB3ZGJhNGhGbmw1TDYxS3pDYzJhSWNFbFlSdzAzOTBrcWM0U1B1cTU4NVRIVjQydDZCMGhqNjJfTTludWdQSEVYT3d6UkF3Z3l0R3ZDVEZ5QzNSRkNoTVB2Q1pFbDNUNkRZa1dU?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMioAFBVV95cUxObUdRamd4ZllSakpucElKSmJqNDZ6NEYtdjJmVUlEU2dCUU1OekNkcGZvRGgxYVJvYzhhMnB3ZGJhNGhGbmw1TDYxS3pDYzJhSWNFbFlSdzAzOTBrcWM0U1B1cTU4NVRIVjQydDZCMGhqNjJfTTludWdQSEVYT3d6UkF3Z3l0R3ZDVEZ5QzNSRkNoTVB2Q1pFbDNUNkRZa1dU?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>EQT to Acquire Southeast Asian PropTech PropertyGuru - PYMNTS.com</strong><br>
+                        <small>August 16, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMilgFBVV95cUxPLTdwZHdQM1F4cnZSVnRXbWVCR2ZrUzJablRidldEaExIR29ZOHdPbVFiVlU5SVFCbmZHQjVyMk1KUGJZeXFYT2RXMUlob1dNWHFDZ0VUSEhZWkxQcDg0QUF3MVJhSktHbkFqQTNWejFRbl9Ta0RFeHhObGNjZlQ4ODNEaXRzWWh4Tmt2bG55c29tSUdMNHc?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMilgFBVV95cUxPLTdwZHdQM1F4cnZSVnRXbWVCR2ZrUzJablRidldEaExIR29ZOHdPbVFiVlU5SVFCbmZHQjVyMk1KUGJZeXFYT2RXMUlob1dNWHFDZ0VUSEhZWkxQcDg0QUF3MVJhSktHbkFqQTNWejFRbl9Ta0RFeHhObGNjZlQ4ODNEaXRzWWh4Tmt2bG55c29tSUdMNHc?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Joshua Ong: Relentless proptech founder, gone too soon - Digital News Asia</strong><br>
+                        <small>August 10, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMimAFBVV95cUxNRkVmZDJYVEtfbVhGQktlanpyTVFyc2NHdFVGTHh3dHo4WlRtamUyenQ1SGRITEVtYlQ1Umo5TlNLWFNRZld3UE5kSFBoZ01RODYxUnl3eGVWM3BDUnQ4QS1CakhJUG9ENFIzcjVwRmx5dnpfZXVGSVZMNUNNVlJJTzViMFpmN2lRejBMTFFmamFtcktGRkJIWQ?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMimAFBVV95cUxNRkVmZDJYVEtfbVhGQktlanpyTVFyc2NHdFVGTHh3dHo4WlRtamUyenQ1SGRITEVtYlQ1Umo5TlNLWFNRZld3UE5kSFBoZ01RODYxUnl3eGVWM3BDUnQ4QS1CakhJUG9ENFIzcjVwRmx5dnpfZXVGSVZMNUNNVlJJTzViMFpmN2lRejBMTFFmamFtcktGRkJIWQ?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>A spectre looms over Hong Kong’s property market - The Economist</strong><br>
+                        <small>July 18, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMilAFBVV95cUxORFVJMEZZUUplUG41QU1pWXl6Rk0zaHdONWVGWU04V0N3cHlGUGVEcDhhWFY1MmZiMTlaOEN3ZF93YWRtYm9CelRCb1htWjFtclBLbWFkZEwxcnFaUG9KdDZ0RkN4Y3RhcjBqb3h0MHBPaTdnSEc0WkhWa3R2MUttOTk3YVQ1UkJtUHZpQ2kzTS1tSFky?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMilAFBVV95cUxORFVJMEZZUUplUG41QU1pWXl6Rk0zaHdONWVGWU04V0N3cHlGUGVEcDhhWFY1MmZiMTlaOEN3ZF93YWRtYm9CelRCb1htWjFtclBLbWFkZEwxcnFaUG9KdDZ0RkN4Y3RhcjBqb3h0MHBPaTdnSEc0WkhWa3R2MUttOTk3YVQ1UkJtUHZpQ2kzTS1tSFky?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Housing, once the ticket to wealth in China, is now draining fortunes - The Washington Post</strong><br>
+                        <small>July 16, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMimgFBVV95cUxNcFlXbTBURmRaVjhEN2FPZDBSQWg5Wk16cXl6UDVEQm96YTNPWXotT1g1YTl0RkxRQlI5TW4tMzRoRERUUTJ6SWdSU2FGc3paejZYOURTa0VXM0ZhTGlPeUVDNmF3NUJ6Q21pNzByT29fSjhQNnN1X1RLTF9ESUVuWDJ4TV9TbUZzSURsdlVKdGV3VGUxUklQdzBB?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMimgFBVV95cUxNcFlXbTBURmRaVjhEN2FPZDBSQWg5Wk16cXl6UDVEQm96YTNPWXotT1g1YTl0RkxRQlI5TW4tMzRoRERUUTJ6SWdSU2FGc3paejZYOURTa0VXM0ZhTGlPeUVDNmF3NUJ6Q21pNzByT29fSjhQNnN1X1RLTF9ESUVuWDJ4TV9TbUZzSURsdlVKdGV3VGUxUklQdzBB?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>M Village, Vietnam’s new proptech star, must pass scaling challenge - Tech in Asia</strong><br>
+                        <small>July 12, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMikAFBVV95cUxQb0dUYktXbVRqTUQ0TEtwWEktaG8zU0ZTQlh1cXRwNmR4N1YxZHFtZXMyUUFjNENtVndEb1pKeGZyRDlHODVZUzh4Q3FGT0tHd3BydlFrZDQ2eV9na1k3TjVXWWxkODBTZjE0Z1ptY3hrYUpnS1lCb3JxcnVIN0FVeFBTN1gxaUhoZWJ5aDV3eDU?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMikAFBVV95cUxQb0dUYktXbVRqTUQ0TEtwWEktaG8zU0ZTQlh1cXRwNmR4N1YxZHFtZXMyUUFjNENtVndEb1pKeGZyRDlHODVZUzh4Q3FGT0tHd3BydlFrZDQ2eV9na1k3TjVXWWxkODBTZjE0Z1ptY3hrYUpnS1lCb3JxcnVIN0FVeFBTN1gxaUhoZWJ5aDV3eDU?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Investing in Hong Kong Property: The Ultimate Guide - InvestAsian</strong><br>
+                        <small>July 10, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMif0FVX3lxTE9BdmR4c3NUdjVNSFR3UFVqRm03SnA1S1N3Wmw1TjRsRUtLUDRmczktRWlwU1B5R3pGUVFHOXlLUUN0dTZRU3VTUFR6M0tMeW01X3RISVRDQ21KUEtmR21HQ00tS3dRZ0dDaEQ0U21NWGh5M1pubG5nOXFSSVB4UVk?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMif0FVX3lxTE9BdmR4c3NUdjVNSFR3UFVqRm03SnA1S1N3Wmw1TjRsRUtLUDRmczktRWlwU1B5R3pGUVFHOXlLUUN0dTZRU3VTUFR6M0tMeW01X3RISVRDQ21KUEtmR21HQ00tS3dRZ0dDaEQ0U21NWGh5M1pubG5nOXFSSVB4UVk?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>China is trying to rescue its property market. Prices are still plunging - CNN</strong><br>
+                        <small>June 17, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMimAFBVV95cUxOZEVZZy1VY3VTdkk2TERHNnY4bHhkSUdtSnV3VjRnXzJxY0JkZjl0R3FwY0doaTdtWllUZzdyQmEtbHJwMWVFNVpRMjQyejdUcW5hY3k3MUU1T2V6aTN5N3BQZ2VYcHZhVTVudTBlc2ZhZGlHOUxjQ2tEaWV3UE9taGlmdGZOeHlaR3c5Y0V2TGp0aGNqWjVTaNIBjwFBVV95cUxOd19LOG1zZXBCT0FwWkZnWEIxa0RCakRIMS03dVdkZ25idEZGUUZtUE40ZWlONGE1cTBxS2JqMVBxci1TcFUyQzZleDVrRl9qM2VRYlk3S3JmSWxSd045SnFYRFpEYzdZZGVJXy1keGVXcm1mbXQ5YzZHaEwtUlRzblJkSDJ3a3lZaGUteG9Scw?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMimAFBVV95cUxOZEVZZy1VY3VTdkk2TERHNnY4bHhkSUdtSnV3VjRnXzJxY0JkZjl0R3FwY0doaTdtWllUZzdyQmEtbHJwMWVFNVpRMjQyejdUcW5hY3k3MUU1T2V6aTN5N3BQZ2VYcHZhVTVudTBlc2ZhZGlHOUxjQ2tEaWV3UE9taGlmdGZOeHlaR3c5Y0V2TGp0aGNqWjVTaNIBjwFBVV95cUxOd19LOG1zZXBCT0FwWkZnWEIxa0RCakRIMS03dVdkZ25idEZGUUZtUE40ZWlONGE1cTBxS2JqMVBxci1TcFUyQzZleDVrRl9qM2VRYlk3S3JmSWxSd045SnFYRFpEYzdZZGVJXy1keGVXcm1mbXQ5YzZHaEwtUlRzblJkSDJ3a3lZaGUteG9Scw?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Malaysia is emerging as a data center powerhouse amid booming demand from AI - CNBC</strong><br>
+                        <small>June 16, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMiqAFBVV95cUxORm52bDg4N1dnZzJaNGtRX0RLcTM5b1hnSzR2ZEFBdGFMTlE1WUlSQ2NMQ00zMjZ3eF84UlM2eXhVOThLUWs3bUdsREhiX3NSaTY3UTJkcy1ROGliR0QzRU1KYVRtR3Z4dGNFb0gxZnF6X2ZLYlRWYlZ5dEdGUHFjdXpuRnZ4SERZdV9FWnZZNXoxRFhqVWpaNG9nUVh1aUE4NDBCNVk2M2nSAa4BQVVfeXFMTm5obzl6NkJ6RDhFdkhGOWtKWEdJN2NyUGhmRU5iTGQtTmZHNDNCd3JyNVJBYk9vZXlLbUQ2ckdDek1veTN3Y2R5T3o4Q0JtTkgtZlN2djRXUC0zNHJZTmVDRGNoTzdFazEyXzAwZ21KeUIxeC14S094Ylc4ZlUwSFJDMlROYmh5R3R3TE5JX01nazJ5ajczUlM1SU5pdXJrNjBmU2ZaT3Bpa3hSMmNn?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMiqAFBVV95cUxORm52bDg4N1dnZzJaNGtRX0RLcTM5b1hnSzR2ZEFBdGFMTlE1WUlSQ2NMQ00zMjZ3eF84UlM2eXhVOThLUWs3bUdsREhiX3NSaTY3UTJkcy1ROGliR0QzRU1KYVRtR3Z4dGNFb0gxZnF6X2ZLYlRWYlZ5dEdGUHFjdXpuRnZ4SERZdV9FWnZZNXoxRFhqVWpaNG9nUVh1aUE4NDBCNVk2M2nSAa4BQVVfeXFMTm5obzl6NkJ6RDhFdkhGOWtKWEdJN2NyUGhmRU5iTGQtTmZHNDNCd3JyNVJBYk9vZXlLbUQ2ckdDek1veTN3Y2R5T3o4Q0JtTkgtZlN2djRXUC0zNHJZTmVDRGNoTzdFazEyXzAwZ21KeUIxeC14S094Ylc4ZlUwSFJDMlROYmh5R3R3TE5JX01nazJ5ajczUlM1SU5pdXJrNjBmU2ZaT3Bpa3hSMmNn?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>InvestHK expects 25 proptech firms to set up in Hong Kong this year - South China Morning Post</strong><br>
+                        <small>June 13, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMirgFBVV95cUxPRWNPTWxkejlWel9ZU0R2YUF2Y3FYVGNRdXhwSDE0NE9lVWZOS3VBaWE3czRKOGl0bU02Rmczbi1ZYWdrUXBIcjdTX1NEZVBsbUNGRGY4cUR4dUtQdEd3ZGN1U2ctTUF4V2RlcVlkLWN2em9QS3UxLWg1NWk4NmFCbTlueEhRc1J4RUZWYTg2MEpNcmkyUkxNdm81X2R0ZWtwTzQ5WTVtVUpjYUI3OWfSAa4BQVVfeXFMUG5tN0EtUVJ0NnJCODJadGRqSFJkQTRZYXRweGt2UU5sSGVoeGxiZTlwa180QWNOVEFESVRWNzFES3hZbVhPMF9XclhnUEdMZG9IbUFnOWloSU55Q0xQcU9fZmw2ejVmQVdXa1h3cFVYVzVoQXNjTUpPUTdTNFA1cllsQm1GQVdya2JGVEtJWVdZMDNDVDRnYlNrbmFzQzhPdDBBNTVHd0JHLUZpS3BR?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMirgFBVV95cUxPRWNPTWxkejlWel9ZU0R2YUF2Y3FYVGNRdXhwSDE0NE9lVWZOS3VBaWE3czRKOGl0bU02Rmczbi1ZYWdrUXBIcjdTX1NEZVBsbUNGRGY4cUR4dUtQdEd3ZGN1U2ctTUF4V2RlcVlkLWN2em9QS3UxLWg1NWk4NmFCbTlueEhRc1J4RUZWYTg2MEpNcmkyUkxNdm81X2R0ZWtwTzQ5WTVtVUpjYUI3OWfSAa4BQVVfeXFMUG5tN0EtUVJ0NnJCODJadGRqSFJkQTRZYXRweGt2UU5sSGVoeGxiZTlwa180QWNOVEFESVRWNzFES3hZbVhPMF9XclhnUEdMZG9IbUFnOWloSU55Q0xQcU9fZmw2ejVmQVdXa1h3cFVYVzVoQXNjTUpPUTdTNFA1cllsQm1GQVdya2JGVEtJWVdZMDNDVDRnYlNrbmFzQzhPdDBBNTVHd0JHLUZpS3BR?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>M’sian proptech startup LiveIn surpasses RM51.4mil funding milestone with new investment - Vulcan Post</strong><br>
+                        <small>June 5, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMiggFBVV95cUxOSFFtWTFST3drZUl6RUFudmdLeTIxcWR6V1RvdE1LXzlZQW9qRlhrZFUtd0lkSDN4SXFGd3YzWm0tWlY3OGNtbWp0S3lkY05MN09YeXpFTVpyaE1SNDN4TGVqQkZldFpRZ05KY3JFY0dYeExnLWVVakRIMmVWNGw2Y2Z30gGHAUFVX3lxTE44endlaFczeHo2anlaR0V0eHUxTDR1TzB3ejZQUkZ5R2dMUmlwdGtDNVFoMUR3cVREekZfaEFQOWUwTmFmRmRuc3VIZ0hfT1BEWVlQb09GS01KdTlFMTZqVHRoZlVJX1hadHBtdE8tVGpXYktDaXJ3Z2Z1aXlscmlkeW5McE9Bdw?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMiggFBVV95cUxOSFFtWTFST3drZUl6RUFudmdLeTIxcWR6V1RvdE1LXzlZQW9qRlhrZFUtd0lkSDN4SXFGd3YzWm0tWlY3OGNtbWp0S3lkY05MN09YeXpFTVpyaE1SNDN4TGVqQkZldFpRZ05KY3JFY0dYeExnLWVVakRIMmVWNGw2Y2Z30gGHAUFVX3lxTE44endlaFczeHo2anlaR0V0eHUxTDR1TzB3ejZQUkZ5R2dMUmlwdGtDNVFoMUR3cVREekZfaEFQOWUwTmFmRmRuc3VIZ0hfT1BEWVlQb09GS01KdTlFMTZqVHRoZlVJX1hadHBtdE8tVGpXYktDaXJ3Z2Z1aXlscmlkeW5McE9Bdw?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Southeast Asia Data Center Market Report 2024: Prominent - GlobeNewswire</strong><br>
+                        <small>May 24, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMi9gJBVV95cUxOc1lPaFNwQ2FQRFJoRl94WVBSQzNFMC1MdldFbVEyeFJFSHB0YWZEVjhrbFNVTGRVTjhVTUZpNUdERVMxVU4wNEpOakcySzdkdFBuclhmY2F1di1ITEUxa3IwcVVVUTh5cjR6TjFVOWVoLUhHS2F2Sll3WmpfbnB0eE40enltZE1wNi1fV2xnUVV6U0Q1LUd2V2NoRXh4RXcwaEl5S3A1alZSb0VvRkZNQVNVb0N4dEI4c0VKQXBOX0hObUxCY2hoX0tvUXVTZWRUcDRpT2ZQMmZnVm1kOHc5QmRsV1FyZlNBYjNPZFVuOWlKM0o3NGRYUjlSSnl3akRxYkhpWGIyOFpBOUFLdXcwejBPRXU0T2U3ZlA5Um12a2pFUFVaMUs3ZU1rZlNTZ0pqNEM4dTFBdUhfdlNoYWFwZThyZGFjR2ZaQzNFOGR3SDZsRjAzRVZZOHJyQVVXbmdob2JVYUtEVi1uenJQLWVkM04xOGdCZw?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMi9gJBVV95cUxOc1lPaFNwQ2FQRFJoRl94WVBSQzNFMC1MdldFbVEyeFJFSHB0YWZEVjhrbFNVTGRVTjhVTUZpNUdERVMxVU4wNEpOakcySzdkdFBuclhmY2F1di1ITEUxa3IwcVVVUTh5cjR6TjFVOWVoLUhHS2F2Sll3WmpfbnB0eE40enltZE1wNi1fV2xnUVV6U0Q1LUd2V2NoRXh4RXcwaEl5S3A1alZSb0VvRkZNQVNVb0N4dEI4c0VKQXBOX0hObUxCY2hoX0tvUXVTZWRUcDRpT2ZQMmZnVm1kOHc5QmRsV1FyZlNBYjNPZFVuOWlKM0o3NGRYUjlSSnl3akRxYkhpWGIyOFpBOUFLdXcwejBPRXU0T2U3ZlA5Um12a2pFUFVaMUs3ZU1rZlNTZ0pqNEM4dTFBdUhfdlNoYWFwZThyZGFjR2ZaQzNFOGR3SDZsRjAzRVZZOHJyQVVXbmdob2JVYUtEVi1uenJQLWVkM04xOGdCZw?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Microsoft Asia Investment Maps Explosion of Data Center M&amp;A - CCN.com</strong><br>
+                        <small>May 16, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMiggFBVV95cUxPODVNOVFGRVMyTHBJMVNwQlA3NVNTdmlTcG0tV0haUmlWWWdNckdYTmZsVkFsVDNabGlhSmw5aDdZNlYtZlQ1RzVyM2JPTDRMam5oeUdLb3M0bHptbnc1cG1tbllyTVBnUE43THZYeG9LTThNLUI1NHRMLUhqUkJib0Rn?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMiggFBVV95cUxPODVNOVFGRVMyTHBJMVNwQlA3NVNTdmlTcG0tV0haUmlWWWdNckdYTmZsVkFsVDNabGlhSmw5aDdZNlYtZlQ1RzVyM2JPTDRMam5oeUdLb3M0bHptbnc1cG1tbllyTVBnUE43THZYeG9LTThNLUI1NHRMLUhqUkJib0Rn?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Hon Kwok Land Investment Company, Limited Announces Appointment of Donald Yin-Shing Lam as an Executive Director - Marketscreener.com</strong><br>
+                        <small>April 19, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMimwJBVV95cUxNS3hJVXJFaXh4R0daS0hpYXJsT2hqaFREX24tazhXYXBqN0JkOU11azRvT1VSbkYyVWprbWdqcUFnTDZYUlB4c0xYa0toNHJaMU1QSmpwN2xraG5BYnVzQlVGbkRHekxMam91eko4aVRpV3lEYzhjOVppTXpCaWs4cnYxVENyNWFLRi1Lb3kzLUtaMXRrZE1FY0FpMGJpWVBveHlVMlUtZnBlWTgya3c5bGhkTm5sT0RSclpqQUs0TGkzRDAzb2RoZklrSHhseHdHTDUxTjRvLS1EOG91YmlBalpoaG04MkQ2NllRSnVmbHdqZXIzdTdNS1A0bURxWlFaZjlmSW9DU2Uwa3RDcVg2NTFWeHFQU2JudXhj?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMimwJBVV95cUxNS3hJVXJFaXh4R0daS0hpYXJsT2hqaFREX24tazhXYXBqN0JkOU11azRvT1VSbkYyVWprbWdqcUFnTDZYUlB4c0xYa0toNHJaMU1QSmpwN2xraG5BYnVzQlVGbkRHekxMam91eko4aVRpV3lEYzhjOVppTXpCaWs4cnYxVENyNWFLRi1Lb3kzLUtaMXRrZE1FY0FpMGJpWVBveHlVMlUtZnBlWTgya3c5bGhkTm5sT0RSclpqQUs0TGkzRDAzb2RoZklrSHhseHdHTDUxTjRvLS1EOG91YmlBalpoaG04MkQ2NllRSnVmbHdqZXIzdTdNS1A0bURxWlFaZjlmSW9DU2Uwa3RDcVg2NTFWeHFQU2JudXhj?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>PropTech: Advancing efficiency and sustainability for real estate in Asia Pacific - RSM Global</strong><br>
+                        <small>March 28, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMiqAFBVV95cUxQSmRyaGc4UUk3WkphU0NaSWJuNW4tdGxqREJLcFowWUszU0dKZXR2cEEtQW9RbEJMZ0JNUDZBdjFSVUtOb2Z0blQzZ25lRnN0NHdMTUxfU3BDdzZBQ0c1WTMxYXhnd2t3a0Jnek1UdUhYZXNVaXJhb2FIREZPX2NCTHJyYXNkYjhyY09LYnE4Nk5HSXhwRktJb1dFZXdhYVpycFpmWUN1TE8?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMiqAFBVV95cUxQSmRyaGc4UUk3WkphU0NaSWJuNW4tdGxqREJLcFowWUszU0dKZXR2cEEtQW9RbEJMZ0JNUDZBdjFSVUtOb2Z0blQzZ25lRnN0NHdMTUxfU3BDdzZBQ0c1WTMxYXhnd2t3a0Jnek1UdUhYZXNVaXJhb2FIREZPX2NCTHJyYXNkYjhyY09LYnE4Nk5HSXhwRktJb1dFZXdhYVpycFpmWUN1TE8?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Indonesia needs startups that work at the intersection of proptech and fintech - DealStreetAsia</strong><br>
+                        <small>March 25, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMiwwFBVV95cUxPNkNKdjhIdkxzdFhOeVFmeDFaU2xVNFpQaHVIUU45SWoxLW9xSzJxZ0cwTl9fczkzNWhsaEZrSGduY3hOZk9Wdl9nTHVuNnRFalV2ZUJ4b1NtVVpwTE4tb0VqNW55TWI0NWdiVG9xMWpYZmJGSVVWM0tueXE1TDhDR3NpdmdnOENSdzZfZkNuWFktSGpnWFdVQXQ4U1VxRk85VHdwR3VmX0lON1dKcjB5VlBWS0tkMXZJLXNjTHFlaE04cm8?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMiwwFBVV95cUxPNkNKdjhIdkxzdFhOeVFmeDFaU2xVNFpQaHVIUU45SWoxLW9xSzJxZ0cwTl9fczkzNWhsaEZrSGduY3hOZk9Wdl9nTHVuNnRFalV2ZUJ4b1NtVVpwTE4tb0VqNW55TWI0NWdiVG9xMWpYZmJGSVVWM0tueXE1TDhDR3NpdmdnOENSdzZfZkNuWFktSGpnWFdVQXQ4U1VxRk85VHdwR3VmX0lON1dKcjB5VlBWS0tkMXZJLXNjTHFlaE04cm8?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>NTT Receives "PropTech Integration Company of the Year – Silver" in the PropTech Excellence Awards 2024 - Macau Business</strong><br>
+                        <small>March 22, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMiygFBVV95cUxNdU9WaTlnSzdqT2xfWFlvaDRDY0VtZFRWOUM3TnI4bjV6NnNzV3RndWFrdlRNVGZocDBXRU1rMFFJYVdQYUt5Vm5UempycmhaTFh1d0ZqOWxCdmtBc3BhUncyTFk5cHg4N0Q0OEwwT2lic1F0NEgwTTBIcU51QzRMeDBZTDdHWlJCOTZKYVZQaEdxZERSYmduY1Faa1YwMllKeDNmeC11WDFXSExOTlRqR0JpaXVTTTY1cmFIMGJxVEtjdThHNHdxb2pR?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMiygFBVV95cUxNdU9WaTlnSzdqT2xfWFlvaDRDY0VtZFRWOUM3TnI4bjV6NnNzV3RndWFrdlRNVGZocDBXRU1rMFFJYVdQYUt5Vm5UempycmhaTFh1d0ZqOWxCdmtBc3BhUncyTFk5cHg4N0Q0OEwwT2lic1F0NEgwTTBIcU51QzRMeDBZTDdHWlJCOTZKYVZQaEdxZERSYmduY1Faa1YwMllKeDNmeC11WDFXSExOTlRqR0JpaXVTTTY1cmFIMGJxVEtjdThHNHdxb2pR?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Mainland Chinese surge into Hong Kong property after stamp duties scrapped - Reuters.com</strong><br>
+                        <small>March 19, 2024, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMiuwFBVV95cUxPOW8tUTVlWDFiTVJuMVpYRHZGcVRNdWphTjlzclFXdUJ6V3hTbHp5TzNUcmJ3WmZGTDdJc3RrcmdVRkxxMm5ORE1oX0l2Nm4wcFJPVEV5bnNXVGFHcExiQ1ZVczhNTVhuZUxQeFVPMWJVWnVWOXo1MEo1T012U3U2SVlJSDhzUnV2dUFJVE1kM29KbERPYzRKaDE1OUNYQk9ZeVJhYV9IQjlOaE9YTzY3SG90bm9RVFNfczhZ?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMiuwFBVV95cUxPOW8tUTVlWDFiTVJuMVpYRHZGcVRNdWphTjlzclFXdUJ6V3hTbHp5TzNUcmJ3WmZGTDdJc3RrcmdVRkxxMm5ORE1oX0l2Nm4wcFJPVEV5bnNXVGFHcExiQ1ZVczhNTVhuZUxQeFVPMWJVWnVWOXo1MEo1T012U3U2SVlJSDhzUnV2dUFJVE1kM29KbERPYzRKaDE1OUNYQk9ZeVJhYV9IQjlOaE9YTzY3SG90bm9RVFNfczhZ?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Hong Kong Budget 2024-25: Key Highlights of Property Measures - Mayer Brown</strong><br>
+                        <small>February 29, 2024, 8:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMivAFBVV95cUxNSVhXVGpCeVpjOEYzbWdiYmJtRG1KSWZSaFBYRmdNVEl5WUNNNzI5RV93bnoya3JpUXZvUkdaS0xvU2tVTFFaUHhvUWx1YkQ3NU92WDJYRnNJWVRHMHNvZEFuZHdVSE50cmVFMkNfUG1qRXZkalE1TWZ6SmlVTVBfVGo2Qm9MdlEyWWdvUkhBZFpsLUxBUDJabkozSzJnQWQxeW9ZM2pIcXE0TkpBOUNnSW9faThla0ZKQnZaeg?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMivAFBVV95cUxNSVhXVGpCeVpjOEYzbWdiYmJtRG1KSWZSaFBYRmdNVEl5WUNNNzI5RV93bnoya3JpUXZvUkdaS0xvU2tVTFFaUHhvUWx1YkQ3NU92WDJYRnNJWVRHMHNvZEFuZHdVSE50cmVFMkNfUG1qRXZkalE1TWZ6SmlVTVBfVGo2Qm9MdlEyWWdvUkhBZFpsLUxBUDJabkozSzJnQWQxeW9ZM2pIcXE0TkpBOUNnSW9faThla0ZKQnZaeg?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Hong Kong Property Tycoons Weather Worst Slump In Two Decades With Little Relief In Sight - Forbes</strong><br>
+                        <small>February 21, 2024, 8:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMi2AFBVV95cUxQSWxnMDAyMENhNzhLVS1ZWm54TXNZSHBYTXJsbmxoNkplRXFPbzRrLTcwMjhfekc5YmI5OHU3Zi1zNTNnWW1UNENqcnktYzBBUkMyampKT0s0SFJEaV9NZHRBVmdnUDAwTEQ4QUQ2ZnU4SDc4TmVBaWZydDBONUZkeGk4VDJ1a1ZvbnZTMmwtTlI4cVRwemluWlktWDF0ZmJTNWllTGtmR2ZKU3BfY2J5aTc3eWd1a1BVTUlmOGVtUE1YbWNnX3A4ZmRQNllDa21aRkNfazRhdEQ?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMi2AFBVV95cUxQSWxnMDAyMENhNzhLVS1ZWm54TXNZSHBYTXJsbmxoNkplRXFPbzRrLTcwMjhfekc5YmI5OHU3Zi1zNTNnWW1UNENqcnktYzBBUkMyampKT0s0SFJEaV9NZHRBVmdnUDAwTEQ4QUQ2ZnU4SDc4TmVBaWZydDBONUZkeGk4VDJ1a1ZvbnZTMmwtTlI4cVRwemluWlktWDF0ZmJTNWllTGtmR2ZKU3BfY2J5aTc3eWd1a1BVTUlmOGVtUE1YbWNnX3A4ZmRQNllDa21aRkNfazRhdEQ?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>UK proptech firm Pi Labs sets sights on Asia - PERE</strong><br>
+                        <small>November 23, 2023, 8:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMiekFVX3lxTE1SR0ZRZG84VHB3bHF2MFBLNEx3MHcxX2VtYk92TDBfaGFPY3VtNFJ0c3FfUXBsRnBGRVIwOUp6SHJkSmQyU05BblROQ1J6UkVyVjNCSHFPSWNqUlVrY19fblFTV1J3TzdYS0drSU1sUWZDN2ZZQW1oLWJn?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMiekFVX3lxTE1SR0ZRZG84VHB3bHF2MFBLNEx3MHcxX2VtYk92TDBfaGFPY3VtNFJ0c3FfUXBsRnBGRVIwOUp6SHJkSmQyU05BblROQ1J6UkVyVjNCSHFPSWNqUlVrY19fblFTV1J3TzdYS0drSU1sUWZDN2ZZQW1oLWJn?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Malaysian PropTech Juwai IQI Appoints Taco Heidinga To Strategic Advisor Role - Online Marketplaces</strong><br>
+                        <small>November 6, 2023, 8:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMivwFBVV95cUxQOHhhMlZBQ3NPVUMxUV8tZWFUMG9tYm5wOXRGQ3lEN1NWV2JoRVJXNm9WUFZsSTk0N1p4cm1GOEVVMkNPaVhPdzFuSHdwYVpXM0JFTjFBRi1GbDJpaW1XUGxENzNUZ2lqNGZWR3EybzUyTTRfMm1PeFNNZGxYWEZwTDZUXzdSLTZvVnlHcHhwVG5TWEtmWG1zVzM1OW1DbVVJZmZHVVh6QS1LM0VRMnJlQ2FmMnpfMXlrOENYcWJ3VQ?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMivwFBVV95cUxQOHhhMlZBQ3NPVUMxUV8tZWFUMG9tYm5wOXRGQ3lEN1NWV2JoRVJXNm9WUFZsSTk0N1p4cm1GOEVVMkNPaVhPdzFuSHdwYVpXM0JFTjFBRi1GbDJpaW1XUGxENzNUZ2lqNGZWR3EybzUyTTRfMm1PeFNNZGxYWEZwTDZUXzdSLTZvVnlHcHhwVG5TWEtmWG1zVzM1OW1DbVVJZmZHVVh6QS1LM0VRMnJlQ2FmMnpfMXlrOENYcWJ3VQ?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Henderson Land's New Central Harbourfront project gets green light - Hong Kong Standard</strong><br>
+                        <small>October 26, 2023, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMixgFBVV95cUxQdTlzS3UzLUM1NHNsVXV6UkxaQ3p4OTZNa3pQU0J2Wk82VUM1aTVnT21yZFRyeUpGNHBTUDY3VUtPSGZsQm5aWW1UaFZZZTREWWpDcTE4RjJYX182dUs5TTh3eUU2M0hYZUViSDk2N1k0bUV1MkkyMzRtdUlCYjFxLXRjQllqMDlaaGJLNmtOV1Jhbzd5bGNtbmMxakJzandsQU1MMDVVOXVJVkJpMGIzODhwVGd2XzBydHYzRlBZV0xhVkk4b1E?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMixgFBVV95cUxQdTlzS3UzLUM1NHNsVXV6UkxaQ3p4OTZNa3pQU0J2Wk82VUM1aTVnT21yZFRyeUpGNHBTUDY3VUtPSGZsQm5aWW1UaFZZZTREWWpDcTE4RjJYX182dUs5TTh3eUU2M0hYZUViSDk2N1k0bUV1MkkyMzRtdUlCYjFxLXRjQllqMDlaaGJLNmtOV1Jhbzd5bGNtbmMxakJzandsQU1MMDVVOXVJVkJpMGIzODhwVGd2XzBydHYzRlBZV0xhVkk4b1E?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>SEA Holdings to Sell Half-Stake in Repulse Bay Luxury Project to Hon Kwok Land - Mingtiandi</strong><br>
+                        <small>December 27, 2022, 8:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMinwFBVV95cUxQMVp3S0pUOWp3aldGNl8zbWpvd08tRGlXbjRZSFpIQjFHYnhkdjVXR2ZFdjZMRUtLbmlUT0pPNmZvcExsVElFS3o2bDJOQ2JQX0stcU0weG9yUnpZV3A2RnFqVmVtNUZneVY2dDc2TkU3SWsxREJkMUYwLWZGd2E4eTlMOWN2Y1BteUlUbnVBM1ZkLTk5TXVwMWQzTUpvYUE?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMinwFBVV95cUxQMVp3S0pUOWp3aldGNl8zbWpvd08tRGlXbjRZSFpIQjFHYnhkdjVXR2ZFdjZMRUtLbmlUT0pPNmZvcExsVElFS3o2bDJOQ2JQX0stcU0weG9yUnpZV3A2RnFqVmVtNUZneVY2dDc2TkU3SWsxREJkMUYwLWZGd2E4eTlMOWN2Y1BteUlUbnVBM1ZkLTk5TXVwMWQzTUpvYUE?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Hon Kwok Land Signs Lease Agreement with Global Industry Leader for En-Bloc Data Centre in Kwai Chung - ACN Newswire</strong><br>
+                        <small>June 15, 2020, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMi7gFBVV95cUxPRzI2cmh2VzRzTVRLdlFKREh6TlkxLWRiRDF4VHZmbkFSOVBrNDY1cFlpZlRQOW5hVkt2eGw5T2xiSEppWU5teVlJTDhybEJuTlpWekpvdXFteFVRX1ZPLXo4N1h2d1lUV2ppZllkOEVGWlI1MXBIYUwweWJ3am9ZT1UxNzlYRGMtNkVYajlNVWEzZVBzc1lhczgwSW1GbVBCRHgxY1FfVjdET1ZBMy1xSmc5UzZJZHBDS05wcDYzWlJORnI5SDlJeklRMXRDVEhuVlVUWW9TX1d0akVCQjl5N21nMXFtcnJVcGFiNUZ3?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMi7gFBVV95cUxPRzI2cmh2VzRzTVRLdlFKREh6TlkxLWRiRDF4VHZmbkFSOVBrNDY1cFlpZlRQOW5hVkt2eGw5T2xiSEppWU5teVlJTDhybEJuTlpWekpvdXFteFVRX1ZPLXo4N1h2d1lUV2ppZllkOEVGWlI1MXBIYUwweWJ3am9ZT1UxNzlYRGMtNkVYajlNVWEzZVBzc1lhczgwSW1GbVBCRHgxY1FfVjdET1ZBMy1xSmc5UzZJZHBDS05wcDYzWlJORnI5SDlJeklRMXRDVEhuVlVUWW9TX1d0akVCQjl5N21nMXFtcnJVcGFiNUZ3?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Prominent alumnus in Hong Kong honored with Baylor’s Distinguished Achievement Award - Baylor University</strong><br>
+                        <small>July 9, 2012, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMixwFBVV95cUxOZ09oTUFOMHlVTmZIYWhZNDFQM2FvdGQyOTE4aEl0cDJWeHR2XzQxQkE3cUxJR3Q3RnRjMTdXR3VuYTBZQnc0ZlItVEZ4dDF4a0VTdlZKR1U2V2w5WGN6aWh0YlVTUlVsUW9BaFlMLXhxa3E3UGYtVFJXRlJEekxNY3YzaU8zOHNxTTZGTzA4NXBsLTdxNHlEVHlVVXdhbTJEUmVMcm9PS2lCUGZnTWRrSm5xX013VWxuQ3lOcjNjc1J3Yjl6SGt3?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMixwFBVV95cUxOZ09oTUFOMHlVTmZIYWhZNDFQM2FvdGQyOTE4aEl0cDJWeHR2XzQxQkE3cUxJR3Q3RnRjMTdXR3VuYTBZQnc0ZlItVEZ4dDF4a0VTdlZKR1U2V2w5WGN6aWh0YlVTUlVsUW9BaFlMLXhxa3E3UGYtVFJXRlJEekxNY3YzaU8zOHNxTTZGTzA4NXBsLTdxNHlEVHlVVXdhbTJEUmVMcm9PS2lCUGZnTWRrSm5xX013VWxuQ3lOcjNjc1J3Yjl6SGt3?oc=5')">
+                            Hide
+                        </button>
+                    </li><li class="feed-item">
+                        <strong>Hon Kwok biding time for property uplift - South China Morning Post</strong><br>
+                        <small>September 15, 1995, 7:00 am</small><br>
+                        <a href="https://news.google.com/rss/articles/CBMifEFVX3lxTFBZVW9ybXRqbURUampjUHFyNWhSQjBMdU1lQzFGRnM1M1MwQ2RidHo5ckd4T2tRd3ZJNFpZVDZtYmNDclZlaEtaT0oxTzF0c09YNEJlSnREMWk4QkdHRTlOMENXOTBsTHN6REVLUjRFQlhfaURDdmRQc205WnHSAXxBVV95cUxNUlhjcXotN0F0ZkJUS3Z0MnF2eGxyYmhxUzlUaDB2dE50TUJkNDNvRTZfTnlvYlVHUFpBa1ZRRWIzZ1hqYm5tNlI5TWNxTHp5RE5sT2xlWHktQTBGZmNUUFpQQzQzTGdBcmdsR09kZmRiVVhMTWtlbWJUQ29t?oc=5" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, 'https://news.google.com/rss/articles/CBMifEFVX3lxTFBZVW9ybXRqbURUampjUHFyNWhSQjBMdU1lQzFGRnM1M1MwQ2RidHo5ckd4T2tRd3ZJNFpZVDZtYmNDclZlaEtaT0oxTzF0c09YNEJlSnREMWk4QkdHRTlOMENXOTBsTHN6REVLUjRFQlhfaURDdmRQc205WnHSAXxBVV95cUxNUlhjcXotN0F0ZkJUS3Z0MnF2eGxyYmhxUzlUaDB2dE50TUJkNDNvRTZfTnlvYlVHUFpBa1ZRRWIzZ1hqYm5tNlI5TWNxTHp5RE5sT2xlWHktQTBGZmNUUFpQQzQzTGdBcmdsR09kZmRiVVhMTWtlbWJUQ29t?oc=5')">
+                            Hide
+                        </button>
+                    </li></ul>
+
+
+        <script>
+            let feeds = [];
+            let feedItems = [];
+            let hiddenItems = new Set();
+            let excludedTerms = new Set();
+            let requiredTerms = new Set();
+            let menuItems = [];
+
+            window.onerror = function(message, source, lineno, colno, error) {
+                console.error('An error occurred:', message, 'at', source, 'line', lineno);
+                return false;
+            };
+
+            function loadFeeds() {
+        const storedFeeds = localStorage.getItem('rssFeeds');
+        if (storedFeeds) {
+            feeds = JSON.parse(storedFeeds);
+            updateFeedSummary();
+        }
+
+        const storedHiddenItems = localStorage.getItem('hiddenItems');
+        if (storedHiddenItems) {
+            hiddenItems = new Set(JSON.parse(storedHiddenItems));
+        }
+
+        const storedExcludedTerms = localStorage.getItem('excludedTerms');
+        if (storedExcludedTerms) {
+            excludedTerms = new Set(JSON.parse(storedExcludedTerms));
+            updateExcludedTerms();
+        }
+
+        const storedRequiredTerms = localStorage.getItem('requiredTerms');
+        if (storedRequiredTerms) {
+            requiredTerms = new Set(JSON.parse(storedRequiredTerms));
+            updateRequiredTerms();
+        }
+
+        // Fetch fresh feeds immediately on page load
+        if (feeds.length > 0) {
+            fetchFeeds();
+        }
+    }
+
+    function setupAutoRefresh() {
+        const REFRESH_INTERVAL = 5 * 60 * 1000; // 10 minutes in milliseconds
+
+        function autoRefresh() {
+            console.log('Auto-refreshing feeds...');
+            if (feeds.length > 0) {
+                fetchFeeds();
+            }
+        }
+
+        // Set up interval for auto-refresh
+        setInterval(autoRefresh, REFRESH_INTERVAL);
+
+        // Also refresh when the window gains focus
+        window.addEventListener('focus', autoRefresh);
+    }
+
+            function saveFeedsToStorage() {
+                localStorage.setItem('rssFeeds', JSON.stringify(feeds));
+            }
+
+            function saveHiddenItemsToStorage() {
+                localStorage.setItem('hiddenItems', JSON.stringify(Array.from(hiddenItems)));
+            }
+
+            function saveExcludedTermsToStorage() {
+                localStorage.setItem('excludedTerms', JSON.stringify(Array.from(excludedTerms)));
+            }
+
+            function saveRequiredTermsToStorage() {
+                localStorage.setItem('requiredTerms', JSON.stringify(Array.from(requiredTerms)));
+            }
+
+            function saveMenuItemsToStorage() {
+                localStorage.setItem('menuItems', JSON.stringify(menuItems));
+            }
+
+            function loadMenuItems() {
+                const storedMenuItems = localStorage.getItem('menuItems');
+                if (storedMenuItems) {
+                    menuItems = JSON.parse(storedMenuItems);
+                    updateMenuItemsList();
+                }
+            }
+
+            function addFeed() {
+                const feedUrl = document.getElementById('new-feed').value;
+                if (feedUrl && !feeds.includes(feedUrl)) {
+                    feeds.push(feedUrl);
+                    saveFeedsToStorage();
+                    updateFeedSummary();
+                    fetchFeeds();
+                    document.getElementById('new-feed').value = '';
+                }
+            }
+
+            function updateFeedSummary() {
+      const summary = document.getElementById('feed-summary');
+      summary.style.border = '1px solid #ccc';
+      summary.style.padding = '10px';
+      summary.style.background = '#f7f7f7';
+      summary.style.marginBottom = '20px';
+      summary.style.marginTop = '10px';
+      summary.innerHTML = '<h3 style="margin-top: 0; font-size: 16px;">Current Feeds:</h3>';
+
+      if (feeds.length === 0) {
+        summary.innerHTML += '<p>No feeds added yet.</p>';
+      } else {
+        const ul = document.createElement('ul');
+        ul.style.listStyle = 'none';
+        ul.style.padding = '0';
+        ul.style.margin = '0';
+        feeds.forEach((feed, index) => {
+          const li = document.createElement('li');
+          li.style.paddingBottom = '10px';
+          li.style.display = 'flex';
+          li.style.alignItems = 'center';
+          li.style.justifyContent = 'space-between';
+          const span = document.createElement('span');
+          span.textContent = feed;
+          span.style.marginRight = '10px';
+          span.style.wordBreak = 'break-all';
+          li.appendChild(span);
+          const removeButton = document.createElement('button');
+          removeButton.textContent = 'Remove';
+          removeButton.onclick = () => removeFeed(index);
+          li.appendChild(removeButton);
+          ul.appendChild(li);
+        });
+        summary.appendChild(ul);
+        const clearButton = document.createElement('button');
+        clearButton.textContent = 'Clear All Feeds';
+        clearButton.style.background = '#ADD8E6';
+        clearButton.onclick = clearAllFeeds;
+        summary.appendChild(clearButton);
+      }
+    }
+       function removeFeed(index) {
+           feeds.splice(index, 1);
+           saveFeedsToStorage();
+           updateFeedSummary();
+           fetchFeeds();
+           displayFeeds();
+       }
+       
+       function fetchFeeds() {
+    feedItems = [];
+    const errorMessage = document.getElementById('error-message');
+    errorMessage.textContent = '';
+
+    if (feeds.length === 0) {
+        console.log('No feeds to fetch');
+        return;
+    }
+
+    console.log('Fetching feeds:', feeds);
+
+    const cacheBuster = new Date().getTime();
+    const apiKey = 'xfgfsjdb84ucakiobgoy2jozqyfpf6ufhmifyjvi';
+    const promises = feeds.map(feed =>
+        $.ajax({
+            url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed)}&api_key=${apiKey}&_=${cacheBuster}`,
+            dataType: 'json'
+        })
+        .then(data => ({ status: 'fulfilled', value: data, feed }))
+        .catch(error => ({ status: 'rejected', reason: error, feed }))
+    );
+
+    Promise.all(promises)
+        .then(results => {
+            console.log('Fetched results:', results);
+            const errors = [];
+            results.forEach(result => {
+                if (result.status === 'fulfilled' && result.value.status === 'ok' && Array.isArray(result.value.items)) {
+                    const items = result.value.items.map(item => ({
+                        ...item,
+                        feedTitle: result.value.feed.title
+                    }));
+                    feedItems = feedItems.concat(items);
+                } else {
+                    console.error('Error fetching feed:', result.feed, result.reason || result.value);
+                    errors.push(result.feed);
+                }
+            });
+            if (errors.length > 0) {
+                const errorMessageSummary = "Errors occurred while fetching some feeds.";
+                const errorMessagesDetailed = `<p>Failed to fetch:</p><ul style="list-style-type: disc;">${errors.map((message) => `<li>${message}</li>`).join("")}</ul>`;
+                errorMessage.textContent = errorMessageSummary;
+                const feedList = document.getElementById('feed-list');
+                const errorDiv = document.createElement('div');
+                errorDiv.innerHTML = errorMessagesDetailed;
+                feedList.appendChild(errorDiv);
+            }
+            try {
+                processFeeds();
+            } catch (error) {
+                console.error('Error processing feeds:', error);
+                errorMessage.textContent = 'An unexpected error occurred. Please check the console for more details.';
+            }
+        })
+        .catch(error => {
+            console.error('Unexpected error:', error);
+            errorMessage.textContent = 'An unexpected error occurred. Please check the console for more details.';
+        });
+}
+
+    function processFeeds() {
+        console.log('Processing feeds. Total items:', feedItems.length);
+
+        const uniqueTitles = new Set();
+
+        // Remove duplicates, apply exclusions and required terms
+        feedItems = feedItems.filter((item) => {
+            const title = item.title.split(' - ')[0].trim();
+            if (uniqueTitles.has(title)) return false;
+            uniqueTitles.add(title);
+
+            // Extract real URL from Bing News URL
+            if (item.link.includes('bing.com/news/apiclick.aspx')) {
+                const urlParams = new URLSearchParams(item.link.split('?')[1]);
+                const realUrl = urlParams.get('url');
+                if (realUrl) {
+                    item.link = decodeURIComponent(realUrl);
+                }
+            }
+            // Google News URLs are left as is
+
+            // Add feedTitle to the item if it's not already there
+            if (!item.feedTitle) {
+                item.feedTitle = item.source?.title || 'Unknown Source';
+            }
+
+            // Check for required terms (OR operation)
+            const hasRequiredTerm = requiredTerms.size === 0 || Array.from(requiredTerms).some(term => 
+                item.title.toLowerCase().includes(term.toLowerCase())
+            );
+
+            // Check for excluded terms
+            const hasExcludedTerm = Array.from(excludedTerms).some(term => 
+                item.title.toLowerCase().includes(term.toLowerCase())
+            );
+
+            return hasRequiredTerm && !hasExcludedTerm;
+        });
+
+        // Sort by date
+        feedItems.sort((a, b) => moment(b.pubDate).diff(moment(a.pubDate)));
+
+        console.log('After processing. Total items:', feedItems.length);
+
+        displayFeeds();
+    }
+            function displayFeeds() {
+                const feedList = document.getElementById('feed-list');
+                feedList.innerHTML = '';
+
+                if (feedItems.length === 0) {
+                    feedList.innerHTML = '<p>No items to display.</p>';
+                    return;
+                }
+
+                feedItems.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'feed-item';
+                    if (hiddenItems.has(item.link)) {
+                        li.classList.add('hidden');
+                    }
+
+                    // Extract title and source
+                    let title = item.title;
+                    let source;
+
+                    // Check if the title already contains a source (typical for Google News)
+                    if (item.title.includes(' - ')) {
+                        // Keep the title as is, it already has the source
+                        source = '';
+                    } else {
+                        // Extract domain name from the link
+                        try {
+                            const url = new URL(item.link);
+                            source = url.hostname.replace('www.', '');
+                        } catch (e) {
+                            source = 'Unknown Source';
+                        }
+                        // Append the source to the title
+                        title += ` - ${source}`;
+                    }
+
+                    li.innerHTML = `
+                        <strong>${title}</strong><br>
+                        <small>${moment(item.pubDate).format('MMMM D, YYYY, h:mm a')}</small><br>
+                        <a href="${item.link}" target="_blank">Read More</a>
+                        <button onclick="toggleItemVisibility(this, '${item.link}')">
+                            ${hiddenItems.has(item.link) ? 'Unhide' : 'Hide'}
+                        </button>
+                    `;
+                    feedList.appendChild(li);
+                });
+
+                console.log('Displayed feed items:', feedItems.length);
+            }
+
+            function toggleItemVisibility(button, itemLink) {
+                const listItem = button.closest('.feed-item');
+                if (hiddenItems.has(itemLink)) {
+                    hiddenItems.delete(itemLink);
+                    listItem.classList.remove('hidden');
+                    button.textContent = 'Hide';
+                } else {
+                    hiddenItems.add(itemLink);
+                    listItem.classList.add('hidden');
+                    button.textContent = 'Unhide';
+                }
+                saveHiddenItemsToStorage();
+            }
+
+       
+           function generateFeed() {
+             const keywords = document.getElementById('keywords').value;
+             const searchEngine = document.querySelector('input[name="search-engine"]:checked').value;
+             const timeframe = document.getElementById('timeframe').value;
+           
+             function getGoogleFeedUrl(keywords, timeframe) {
+               let url = `https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=en-US&gl=US&ceid=US:en`;
+               if (timeframe !== 'default') {
+                 const timeMap = { day: '1d', week: '7d', month: '1m', year: '1y' };
+                 url += `&when=${timeMap[timeframe]}`;
+               }
+               return url;
+             }
+           
+             function getBingFeedUrl(keywords, timeframe) {
+               let url = `https://www.bing.com/news/search?q=${encodeURIComponent(keywords)}&format=rss`;
+               if (timeframe !== 'default' && timeframe !== 'year') {
+                 const timeMap = { day: 'Day', week: 'Week', month: 'Month' };
+                 url += `&tf=${timeMap[timeframe]}`;
+               }
+               return url;
+             }
+           
+             let feedUrls = [];
+           
+             if (searchEngine === 'google' || searchEngine === 'both') {
+               feedUrls.push(getGoogleFeedUrl(keywords, timeframe));
+             }
+             if (searchEngine === 'bing' || searchEngine === 'both') {
+               feedUrls.push(getBingFeedUrl(keywords, timeframe));
+             }
+           
+             feedUrls.forEach(feedUrl => {
+               if (!feeds.includes(feedUrl)) {
+                 feeds.push(feedUrl);
+               }
+             });
+           
+             saveFeedsToStorage();
+             updateFeedSummary();
+             fetchFeeds();
+           
+             const generatedFeedDiv = document.getElementById('generated-feed');
+             generatedFeedDiv.innerHTML = `<p>Feed(s) added: ${feedUrls.join(', ')}</p>`;
+
+             // Clear the keywords input field
+             document.getElementById('keywords').value = '';
+           }
+     
+            function clearAllFeeds() {
+                feeds = [];
+                feedItems = [];
+                hiddenItems.clear();
+                saveFeedsToStorage();
+                saveHiddenItemsToStorage();
+                updateFeedSummary();
+                displayFeeds();
+            }
+
+            function addExcludedTerm() {
+                const term = document.getElementById('exclude-term').value.trim();
+                if (term && !excludedTerms.has(term)) {
+                    excludedTerms.add(term);
+                    saveExcludedTermsToStorage();
+                    updateExcludedTerms();
+                    document.getElementById('exclude-term').value = '';
+                    fetchFeeds(); // Refresh feeds to apply new exclusion
+                }
+            }
+
+            function updateExcludedTerms() {
+                const excludedTermsDiv = document.getElementById('excluded-terms');
+                excludedTermsDiv.style.border = '1px solid #ccc';
+                excludedTermsDiv.style.padding = '10px';
+                excludedTermsDiv.style.background = '#f7f7f7'; // add light gray background
+                excludedTermsDiv.style.marginBottom = '20px'; // add some space below the box
+                excludedTermsDiv.innerHTML = '<h4 style="margin-top: 0;">Excluded Terms:</h4>';
+                if (excludedTerms.size === 0) {
+                    excludedTermsDiv.innerHTML += '<p>No terms excluded.</p>';
+                } else {
+                    const ul = document.createElement('ul');
+                    ul.style.listStyle = 'none'; // remove default list styling
+                    ul.style.padding = '0'; // remove default list padding
+                    ul.style.margin = '0'; // remove default list margin
+                    excludedTerms.forEach(term => {
+                        const li = document.createElement('li');
+                        li.style.paddingBottom = '10px'; // add some space between list items
+                        const span = document.createElement('span');
+                        span.textContent = term;
+                        span.style.marginRight = '10px'; // add some space between term and button
+                        li.appendChild(span);
+                        const removeButton = document.createElement('button');
+                        removeButton.textContent = 'Remove';
+                        removeButton.onclick = () => removeExcludedTerm(term);
+                        li.appendChild(removeButton);
+                        ul.appendChild(li);
+                    });
+                    excludedTermsDiv.appendChild(ul);
+                        const clearButton = document.createElement('button');
+                        clearButton.textContent = 'Clear All Exclusions';
+                        clearButton.style.background = '#ADD8E6'; // change background color to light blue
+                        clearButton.onclick = clearAllExclusions;
+                        excludedTermsDiv.appendChild(clearButton);
+                    }
+            }
+
+            function removeExcludedTerm(term) {
+                excludedTerms.delete(term);
+                saveExcludedTermsToStorage();
+                updateExcludedTerms();
+                fetchFeeds(); // Refresh feeds to apply updated exclusions
+            }
+
+            function clearAllExclusions() {
+                excludedTerms.clear();
+                saveExcludedTermsToStorage();
+                updateExcludedTerms();
+                fetchFeeds(); // Refresh feeds to apply updated exclusions
+            }
+
+            function setPageTitle() {
+                const newTitle = document.getElementById('page-title').value.trim();
+                if (newTitle) {
+                    document.title = newTitle;
+                    const h1Element = document.querySelector('h1');
+                    if (h1Element) {
+                        h1Element.textContent = newTitle;
+                    }
+                    document.getElementById('title-status').textContent = `Page Title set to: "${newTitle}"`;
+                    localStorage.setItem('customPageTitle', newTitle);
+                } else {
+                    document.getElementById('title-status').textContent = "Please enter a valid title.";
+                }
+            }
+
+            function loadCustomTitle() {
+                const savedTitle = localStorage.getItem('customPageTitle');
+                if (savedTitle) {
+                    document.title = savedTitle;
+                    const h1Element = document.querySelector('h1');
+                    if (h1Element) {
+                        h1Element.textContent = savedTitle;
+                    }
+                    document.getElementById('page-title').value = savedTitle;
+                    document.getElementById('title-status').textContent = `Page Title set to: "${savedTitle}"`;
+                }
+            }
+
+            function addMenuItem() {
+                const name = document.getElementById('menu-item-name').value.trim();
+                const url = document.getElementById('menu-item-url').value.trim();
+                if (name && url) {
+                    menuItems.push({ name, url });
+                    saveMenuItemsToStorage(); // Save to localStorage
+                    updateMenuItemsList();
+                    document.getElementById('menu-item-name').value = '';
+                    document.getElementById('menu-item-url').value = '';
+                }
+            }
+
+            function updateMenuItemsList() {
+                const menuList = document.getElementById('menu-items-list');
+                menuList.innerHTML = '';
+                menuItems.forEach((item, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'menu-item' + (item.name.toLowerCase() === 'home' ? ' home' : '');
+                    li.innerHTML = `<a href="${item.url}" target="_blank">${item.name}</a> <button onclick="removeMenuItem(${index})">Remove</button>`;
+                    menuList.appendChild(li);
+                });
+            }
+
+            function removeMenuItem(index) {
+                menuItems.splice(index, 1);
+                saveMenuItemsToStorage(); // Save to localStorage
+                updateMenuItemsList();
+            }
+
+            function generateUserVersion() {
+    // Get the custom title
+    const customTitle = localStorage.getItem('customPageTitle') || "RSS Feed Reader";
+
+    // Create a copy of the current HTML
+    let userHTML = document.documentElement.outerHTML;
+
+    // Remove the feed builder section
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(userHTML, 'text/html');
+    const feedBuilder = doc.getElementById('feed-builder');
+    if (feedBuilder) {
+        feedBuilder.remove();
+    }
+
+    // Update the page title
+    doc.title = customTitle;
+    const h1Element = doc.querySelector('h1');
+    if (h1Element) {
+        h1Element.textContent = customTitle;
+    }
+
+    // Modify the loadFeeds function in the user version
+    const script = doc.createElement('script');
+    script.textContent = `
+        // Remove 'let' to avoid redeclaration
+        feeds = ${JSON.stringify(feeds)};
+        excludedTerms = new Set(${JSON.stringify(Array.from(excludedTerms))});
+        requiredTerms = new Set(${JSON.stringify(Array.from(requiredTerms))});
+        let feedItems = [];
+        let hiddenItems = new Set();
+
+        function loadFeeds() {
+            console.log('Loading feeds...');
+            const storedHiddenItems = localStorage.getItem('hiddenItems');
+            if (storedHiddenItems) {
+                hiddenItems = new Set(JSON.parse(storedHiddenItems));
+            }
+
+            if (feeds.length > 0) {
+                fetchFeeds();
+            }
+        }
+
+        function setupAutoRefresh() {
+            const REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+            function autoRefresh() {
+                console.log('Auto-refreshing feeds...');
+                if (feeds.length > 0) {
+                    fetchFeeds();
+                }
+            }
+
+            console.log('Setting up auto-refresh...');
+            setInterval(autoRefresh, REFRESH_INTERVAL);
+            window.addEventListener('focus', autoRefresh);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFeeds();
+            setupAutoRefresh();
+        });
+
+        // Include other necessary functions
+        ${fetchFeeds.toString()}
+        ${processFeeds.toString()}
+        ${displayFeeds.toString()}
+        ${toggleItemVisibility.toString()}
+        ${saveHiddenItemsToStorage.toString()}
+
+        // Remove updateFeedSummary, updateExcludedTerms, and updateRequiredTerms as they're not needed in the user version
+    `;
+
+    // Find the existing script tag and replace its content
+    const existingScript = doc.querySelector('script');
+    if (existingScript) {
+        existingScript.parentNode.replaceChild(script, existingScript);
+    } else {
+        doc.body.appendChild(script);
+    }
+
+    // Add hamburger menu to the user version
+    const hamburgerMenu = `
+        <div class="hamburger-menu">
+            <button onclick="toggleMenu()">
+                <div class="hamburger-icon">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </button>
+            <div class="menu-items" id="menu-items">
+                <button class="close-menu" onclick="toggleMenu()">✕</button>
+                <a href="index.html">Home</a>
+                ${menuItems.map(item => `<a href="${item.url}">${item.name}</a>`).join('')}
+            </div>
+        </div>
+    `;
+
+    doc.body.insertAdjacentHTML('afterbegin', hamburgerMenu);
+
+    // Add toggle menu function and styles
+    const toggleMenuScript = doc.createElement('script');
+    toggleMenuScript.textContent = `
+        function toggleMenu() {
+            document.getElementById('menu-items').classList.toggle('active');
+        }
+    `;
+    doc.body.appendChild(toggleMenuScript);
+
+    const menuStyles = doc.createElement('style');
+    menuStyles.textContent = `
+        .hamburger-menu {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+        }
+        .hamburger-menu > button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+        }
+        .hamburger-icon {
+            width: 30px;
+            height: 24px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .hamburger-icon span {
+            display: block;
+            height: 3px;
+            width: 100%;
+            background-color: #333;
+            border-radius: 3px;
+            transition: 0.3s;
+        }
+        .menu-items {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 250px;
+            height: 100%;
+            background-color: #f1f1f1;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+        .menu-items.active {
+            display: block;
+        }
+        .menu-items a {
+            display: block;
+            padding: 10px 0;
+            color: #333;
+            text-decoration: none;
+            font-size: 18px;
+        }
+        .menu-items a:hover {
+            background-color: #ddd;
+        }
+        .close-menu {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+    `;
+    doc.head.appendChild(menuStyles);
+
+    // Generate the modified HTML
+    userHTML = doc.documentElement.outerHTML;
+
+    // Create a Blob with the HTML content
+    const blob = new Blob([userHTML], {type: 'text/html'});
+    const url = URL.createObjectURL(blob);
+
+    // Create a download link and trigger the download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'user-version.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+
+            function addRequiredTerm() {
+                const term = document.getElementById('required-term').value.trim();
+                if (term && !requiredTerms.has(term)) {
+                    requiredTerms.add(term);
+                    saveRequiredTermsToStorage();
+                    updateRequiredTerms();
+                    document.getElementById('required-term').value = '';
+                    fetchFeeds(); // Refresh feeds to apply new required term
+                }
+            }
+
+            function updateRequiredTerms() {
+                const requiredTermsDiv = document.getElementById('required-terms');
+                requiredTermsDiv.style.border = '1px solid #ccc';
+                requiredTermsDiv.style.padding = '10px';
+                requiredTermsDiv.style.background = '#f7f7f7';
+                requiredTermsDiv.style.marginBottom = '20px';
+                requiredTermsDiv.innerHTML = '<h4 style="margin-top: 0;">Required Terms:</h4>';
+                if (requiredTerms.size === 0) {
+                    requiredTermsDiv.innerHTML += '<p>No required terms.</p>';
+                } else {
+                    const ul = document.createElement('ul');
+                    ul.style.listStyle = 'none';
+                    ul.style.padding = '0';
+                    ul.style.margin = '0';
+                    requiredTerms.forEach(term => {
+                        const li = document.createElement('li');
+                        li.style.paddingBottom = '10px';
+                        const span = document.createElement('span');
+                        span.textContent = term;
+                        span.style.marginRight = '10px';
+                        li.appendChild(span);
+                        const removeButton = document.createElement('button');
+                        removeButton.textContent = 'Remove';
+                        removeButton.onclick = () => removeRequiredTerm(term);
+                        li.appendChild(removeButton);
+                        ul.appendChild(li);
+                    });
+                    requiredTermsDiv.appendChild(ul);
+                    const clearButton = document.createElement('button');
+                    clearButton.textContent = 'Clear All Required Terms';
+                    clearButton.style.background = '#ADD8E6';
+                    clearButton.onclick = clearAllRequiredTerms;
+                    requiredTermsDiv.appendChild(clearButton);
+                }
+            }
+
+            function removeRequiredTerm(term) {
+                requiredTerms.delete(term);
+                saveRequiredTermsToStorage();
+                updateRequiredTerms();
+                fetchFeeds(); // Refresh feeds to apply updated required terms
+            }
+
+            function clearAllRequiredTerms() {
+                requiredTerms.clear();
+                saveRequiredTermsToStorage();
+                updateRequiredTerms();
+                fetchFeeds(); // Refresh feeds to apply updated required terms
+            }
+
+            function loadRequiredTerms() {
+                const storedRequiredTerms = localStorage.getItem('requiredTerms');
+                if (storedRequiredTerms) {
+                    requiredTerms = new Set(JSON.parse(storedRequiredTerms));
+                    updateRequiredTerms();
+                }
+            }
+
+            function saveMenuItemsToStorage() {
+                localStorage.setItem('menuItems', JSON.stringify(menuItems));
+            }
+
+            function loadMenuItems() {
+                const storedMenuItems = localStorage.getItem('menuItems');
+                if (storedMenuItems) {
+                    menuItems = JSON.parse(storedMenuItems);
+                    updateMenuItemsList();
+                }
+            }
+
+            function saveConfiguration() {
+                const configName = document.getElementById('config-name').value.trim();
+                if (!configName) {
+                    alert('Please enter a name for the configuration');
+                    return;
+                }
+
+                const configuration = {
+                    title: document.title,
+                    feeds: feeds,
+                    excludedTerms: Array.from(excludedTerms),
+                    requiredTerms: Array.from(requiredTerms),
+                    menuItems: menuItems
+                };
+
+                let savedConfigs = JSON.parse(localStorage.getItem('savedConfigurations')) || {};
+                savedConfigs[configName] = configuration;
+                localStorage.setItem('savedConfigurations', JSON.stringify(savedConfigs));
+
+                alert('Configuration saved successfully');
+                updateSavedConfigsList();
+            }
+
+            function loadConfiguration() {
+                const savedConfigs = JSON.parse(localStorage.getItem('savedConfigurations')) || {};
+                const configNames = Object.keys(savedConfigs);
+
+                if (configNames.length === 0) {
+                    alert('No saved configurations found');
+                    return;
+                }
+
+                const selectedConfig = prompt('Enter the name of the configuration to load:\n' + configNames.join(', '));
+                if (!selectedConfig || !savedConfigs[selectedConfig]) {
+                    alert('Invalid configuration name');
+                    return;
+                }
+
+                const config = savedConfigs[selectedConfig];
+
+                // Load the configuration
+                document.title = config.title;
+                const h1Element = document.querySelector('h1');
+                if (h1Element) {
+                    h1Element.textContent = config.title;
+                }
+                document.getElementById('page-title').value = config.title;
+                localStorage.setItem('customPageTitle', config.title);
+                feeds = config.feeds;
+                excludedTerms = new Set(config.excludedTerms);
+                requiredTerms = new Set(config.requiredTerms);
+                menuItems = config.menuItems;
+
+                // Update UI and storage
+                updateFeedSummary();
+                updateExcludedTerms();
+                updateRequiredTerms();
+                updateMenuItemsList();
+                saveFeedsToStorage();
+                saveExcludedTermsToStorage();
+                saveRequiredTermsToStorage();
+                saveMenuItemsToStorage();
+
+                // Refresh feeds
+                fetchFeeds();
+
+                alert('Configuration loaded successfully');
+            }
+
+            function updateSavedConfigsList() {
+                const savedConfigsDiv = document.getElementById('saved-configs');
+                const savedConfigs = JSON.parse(localStorage.getItem('savedConfigurations')) || {};
+                const configNames = Object.keys(savedConfigs);
+
+                savedConfigsDiv.innerHTML = '<h4>Saved Configurations:</h4>';
+                if (configNames.length === 0) {
+                    savedConfigsDiv.innerHTML += '<p>No saved configurations.</p>';
+                } else {
+                    const ul = document.createElement('ul');
+                    ul.style.listStyleType = 'none';
+                    ul.style.padding = '0';
+                    configNames.forEach(name => {
+                        const li = document.createElement('li');
+                        li.style.display = 'flex';
+                        li.style.justifyContent = 'space-between';
+                        li.style.alignItems = 'center';
+                        li.style.marginBottom = '10px';
+                        li.style.padding = '5px';
+                        li.style.backgroundColor = '#f0f0f0';
+                        li.style.borderRadius = '5px';
+                        const span = document.createElement('span');
+                        span.textContent = name;
+                        li.appendChild(span);
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = 'Delete';
+                        deleteButton.style.marginLeft = '10px';
+                        deleteButton.onclick = () => deleteConfiguration(name);
+                        li.appendChild(deleteButton);
+                        ul.appendChild(li);
+                    });
+                    savedConfigsDiv.appendChild(ul);
+                }
+            }
+
+            function deleteConfiguration(name) {
+                let savedConfigs = JSON.parse(localStorage.getItem('savedConfigurations')) || {};
+                delete savedConfigs[name];
+                localStorage.setItem('savedConfigurations', JSON.stringify(savedConfigs));
+                updateSavedConfigsList();
+                alert('Configuration deleted successfully');
+            }
+
+            // Call this function when the page loads
+            function initializeConfigManagement() {
+                updateSavedConfigsList();
+            }
+
+            // Load feeds and set up auto-refresh on page load
+            loadFeeds();
+            setupAutoRefresh();
+            loadCustomTitle();
+            loadRequiredTerms();
+            loadMenuItems(); // Add this line
+            initializeConfigManagement();
+        </script>
+    
+    
+<script>
+        function toggleMenu() {
+            document.getElementById('menu-items').classList.toggle('active');
+        }
+    </script></body></html>
