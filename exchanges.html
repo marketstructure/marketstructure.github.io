@@ -254,7 +254,7 @@
    
 <style>
         body {
-            padding-top: 35px; /* Add this line to create more space at the top of the page */
+            padding-top: 36px; /* Add this line to create more space at the top of the page */
         }
         .hamburger-menu {
             position: fixed;
@@ -263,9 +263,9 @@
             z-index: 1000;
         }
         .hamburger-menu > button {
-            background-color: #e6f2ff;
+            background-color: #f5faff;
             color: #0066cc;
-            border: none;
+            border: 1px solid #0066cc;
             font-size: 24px;
             cursor: pointer;
             padding: 5px 10px;
@@ -281,7 +281,9 @@
             background-color: #f5faff;
             padding: 20px;
             box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-            border-radius: 10px;
+            border-radius: 15px;
+            border-bottom-left-radius: 15; 
+            border-bottom-right-radius: 15;
         }
         .menu-items.active {
             display: block;
@@ -294,6 +296,7 @@
             border: none;
             font-size: 20px;
             cursor: pointer;
+            color: #0066cc;
         }
         #menu-items-list {
             list-style-type: none;
@@ -310,9 +313,11 @@
         }
         #menu-items-list a:hover {
             color: #0066cc;
+            background-color: #e6f2ff;
         }
         #menu-items-list li:first-child a {
             font-weight: bold;
+            font-size: 18px; /*
         }
     </style></head><body>
         <div class="hamburger-menu">
