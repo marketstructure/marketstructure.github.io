@@ -258,6 +258,7 @@
             top: 10px;
             left: 10px;
             z-index: 1000;
+            margin-top: 50px; /* Add this line to create more space between the hamburger menu and the page title */
         }
         .hamburger-menu > button {
             background-color: #e6f2ff;
@@ -323,7 +324,7 @@
         <ul id="feed-list"></ul>
     <script>
         // Configuration
-        const feeds = [{"url":"https://www.thetradenews.com/news/trading-venues/feed/","unfiltered":true,"requiredTerms":[],"excludedTerms":[]},{"url":"https://www.bing.com/news/search?q=intitle%3Aexchanges%20Asian%20stock&format=rss","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=hong%20kong%20exchanges%20clearing&hl=en-US&gl=US&ceid=US:en&when=1m","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=(Asian%20stock%20exchanges%20OR%20%22Tokyo%20Stock%20Exchange%22%20OR%20%22Shanghai%20Stock%20Exchange%22%20OR%20%22Hong%20Kong%20Stock%20Exchange%22%20OR%20%22Singapore%20Exchange%22%20OR%20%22Korean%20Exchange%22)%20AND%20(regulation%20OR%20regulatory%20OR%20reforms%20OR%20market%20structure%20OR%20infrastructure)&hl=en-US&gl=US&ceid=US:en&when=1m","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=(Asian%20stock%20exchanges%20OR%20%22Tokyo%20Stock%20Exchange%22%20OR%20%22Shanghai%20Stock%20Exchange%22%20OR%20%22Hong%20Kong%20Stock%20Exchange%22%20OR%20%22Singapore%20Exchange%22%20OR%20%22Korean%20Exchange%22)%20AND%20(business%20OR%20market%20OR%20trading%20OR%20listings%20OR%20IPO%20OR%20cross-border%20OR%20collaboration)&hl=en-US&gl=US&ceid=US:en&when=1m","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=(Asian%20stock%20exchanges%20OR%20%22Tokyo%20Stock%20Exchange%22%20OR%20%22Shanghai%20Stock%20Exchange%22%20OR%20%22Hong%20Kong%20Stock%20Exchange%22%20OR%20%22Singapore%20Exchange%22%20OR%20%22Korean%20Exchange%22)%20AND%20(technology%20OR%20innovation%20OR%20fintech%20OR%20blockchain%20OR%20governance%20OR%20sustainability%20OR%20ESG)&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://www.regulationasia.com/feed/","unfiltered":false,"requiredTerms":["Exchange","HKEX"],"excludedTerms":[]},{"url":"https://www.bing.com/news/search?q=%22Stock%20Connect%22%20China&format=rss","unfiltered":false,"requiredTerms":[],"excludedTerms":[]}];
+        const feeds = [{"url":"https://www.thetradenews.com/news/trading-venues/feed/","unfiltered":true,"requiredTerms":[],"excludedTerms":[]},{"url":"https://www.bing.com/news/search?q=intitle%3Aexchanges%20Asian%20stock&format=rss","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=hong%20kong%20exchanges%20clearing&hl=en-US&gl=US&ceid=US:en&when=1m","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=(Asian%20stock%20exchanges%20OR%20%22Tokyo%20Stock%20Exchange%22%20OR%20%22Shanghai%20Stock%20Exchange%22%20OR%20%22Hong%20Kong%20Stock%20Exchange%22%20OR%20%22Singapore%20Exchange%22%20OR%20%22Korean%20Exchange%22)%20AND%20(regulation%20OR%20regulatory%20OR%20reforms%20OR%20market%20structure%20OR%20infrastructure)&hl=en-US&gl=US&ceid=US:en&when=1m","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=(Asian%20stock%20exchanges%20OR%20%22Tokyo%20Stock%20Exchange%22%20OR%20%22Shanghai%20Stock%20Exchange%22%20OR%20%22Hong%20Kong%20Stock%20Exchange%22%20OR%20%22Singapore%20Exchange%22%20OR%20%22Korean%20Exchange%22)%20AND%20(business%20OR%20market%20OR%20trading%20OR%20listings%20OR%20IPO%20OR%20cross-border%20OR%20collaboration)&hl=en-US&gl=US&ceid=US:en&when=1m","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=(Asian%20stock%20exchanges%20OR%20%22Tokyo%20Stock%20Exchange%22%20OR%20%22Shanghai%20Stock%20Exchange%22%20OR%20%22Hong%20Kong%20Stock%20Exchange%22%20OR%20%22Singapore%20Exchange%22%20OR%20%22Korean%20Exchange%22)%20AND%20(technology%20OR%20innovation%20OR%20fintech%20OR%20blockchain%20OR%20governance%20OR%20sustainability%20OR%20ESG)&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://www.regulationasia.com/feed/","unfiltered":false,"requiredTerms":["Exchange","HKEX","Exchanges"],"excludedTerms":[]},{"url":"https://www.bing.com/news/search?q=%22Stock%20Connect%22%20China&format=rss","unfiltered":false,"requiredTerms":[],"excludedTerms":[]}];
         const excludedTerms = new Set(["closes","gains","higher","today","bull","returns","wrap","UK","highlights","bell","sponsor"]);
         const requiredTerms = new Set([]);
         let feedItems = [];
@@ -332,6 +333,14 @@
 
         function toggleMenu() {
             document.getElementById('menu-items').classList.toggle('active');
+        }
+
+        function closeMenuOnOutsideClick(event) {
+            const menu = document.getElementById('menu-items');
+            const hamburger = document.querySelector('.hamburger-menu > button');
+            if (!menu.contains(event.target) && !hamburger.contains(event.target) && menu.classList.contains('active')) {
+                toggleMenu();
+            }
         }
 
         function updateMenuItemsList() {
@@ -550,5 +559,6 @@
             updateMenuItemsList();
             fetchFeeds();
             setupAutoRefresh();
+            window.addEventListener('click', closeMenuOnOutsideClick);
         });
     </script></body></html>
