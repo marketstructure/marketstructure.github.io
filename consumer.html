@@ -1,676 +1,959 @@
 
+
 <!DOCTYPE html>
-<html><head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Monitor: Consumer Headlines</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Asia Consumer Weekly Briefing – May 14, 2025</title>
+  <meta name="viewport" content="width=650, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css?family=EB+Garamond:400,700&display=swap" rel="stylesheet">
+  <style>
+    body { background: #f7f7f7; margin: 0; padding: 30px 0; }
+  </style>
+</head>
+<body>
 
-    <style>
-        body {
-            font-family: "Open Sans", sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            background-color: #fffefc; /* Subtle off-white background */
-        }
-        h1 {
-            margin-bottom: 28px;
-            padding-top: 30px;
-            font-size: 31px;
-            font-weight: bold;
-            line-height: 1.2;
-            color: #2c3e50;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            transition: opacity 0.3s ease-in-out;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 15px;
-        }
-        h1:hover {
-            opacity: 0.8;
-        }
-        #feed-list {
-            list-style-type: none;
-            padding: 0;
-        }
-        .feed-item {
-            border-bottom: 1px solid #ccc;
-            padding: 10px 0;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-        }
-        .feed-item:hover {
-            background-color: #f0f8ff; /* Light blue background on hover */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow on hover */
-            transform: translateY(-2px); /* Slight lift effect */
-        }
-        .feed-item strong {
-            transition: color 0.3s ease;
-        }
-        .feed-item:hover strong {
-            color: #0066cc; /* Change title color on hover */
-        }
-        .feed-item a {
-            text-decoration: none;
-            color: #0066cc;
-            transition: color 0.3s ease;
-        }
-        .feed-item:hover a {
-            color: #004499; /* Darker blue for links on hover */
-        }
-        .feed-item button {
-            margin-left: 10px;
-        }
-        .hidden {
-            display: none;
-        }
-        #feed-summary, #excluded-terms {
-            margin-top: 20px;
-        }
-        #error-message {
-            color: rgb(174, 8, 8);
-        }
-        .section {
-            margin-top: 30px;
-            border-top: 1px solid #ccc;
-            padding-top: 20px;
-            background-image: linear-gradient(to bottom, #fff, #f7f7f7);
-        }
-        .subsection {
-            border: 1px solid #ccc;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        button {
-            background-color: #f7f7f7;
-            color: #333;
-            padding: 5px 10px;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-right: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        button:hover {
-            background-color: #e5e5e5;
-        }
-        h3 {
-            margin-bottom: 10px;
-        }
-        
-        #generate-feed-btn {
-            background-color: #e6f3ff;
-        }
-        
-        /* Styles for the hamburger menu */
-        .hamburger-menu {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            z-index: 1000;
-            transition: left 0.3s ease-in-out;
-        }
-        .hamburger-menu.active {
-         left: 0;
-        }
-        .menu-items {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 250px;
-            height: 100%;
-            background-color: #f5faff;
-            padding: 20px;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-            z-index: 1000;
-        }
-        
-        .menu-items.active {
-            display: block;
-        }
-        
-        #menu-items-list ul {
-            list-style: none;
-            padding: 0;
-        }
-        
-        #menu-items-list li {
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        #menu-items-list li span {
-            margin-right: 10px;
-            word-break: break-all;
-        }
-        
-        #menu-items-list button {
-            margin-left: 10px;
-        }
-        
-        /* Add this new rule */
-        #feed-builder > div {
-            border: 1px solid #ccc;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-        
-        /* General menu styles */
-        .menu {
-            list-style-type: none;
-            padding: 0;
-            margin: 0;
-            font-family: Arial, sans-serif;
-        }
-        
-        .menu-item {
-            padding: 10px 15px;
-            margin: 5px 0;
-            background-color: #f0f0f0;
-            border-radius: 5px;
-            text-align: center;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-        
-        .menu-item:hover {
-            background-color: #e0e0e0;
-        }
-        
-        .menu-item a {
-            text-decoration: none;
-            color: #333;
-        }
-        
-        /* Special style for the Home item */
-        .menu-item.home {
-            background-color: #4CAF50;
-            color: white;
-            font-weight: bold;
-        }
-        
-        .menu-item.home a {
-            color: white;
-        }
-        
-        #saved-configs ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        
-        #saved-configs li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            padding: 5px;
-            background-color: #f0f0f0;
-            border-radius: 5px;
-        }
-        
-        #saved-configs li button {
-            margin-left: 10px;
-        }
-        
-        /* Updated styles for feed-specific terms */
-        #feed-specific-terms-container {
-            margin-top: 20px;
-        }
-        
-        #feed-specific-terms-container button {
-            margin-top: 10px;
-        }
-        
-        .feed-specific-terms-item {
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            padding: 10px;
-            margin-bottom: 15px;
-            background-color: #f9f9f9;
-        }
-        
-        #feed-specific-terms h4 {
-            font-size: 0.85em;
-            margin-top: 0;
-            margin-bottom: 5px;
-            font-weight: normal;
-            color: #666;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 5px;
-        }
-        
-        #feed-specific-terms h5 {
-            font-size: 0.9em;
-            margin-bottom: 5px;
-        }
-        
-        #feed-specific-terms ul {
-            list-style-type: none;
-            padding-left: 0;
-        }
-        
-        #feed-specific-terms li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        
-        #feed-specific-terms li span {
-            font-size: 0.85em;
-            margin-right: 15px;
-            word-break: break-all;
-            flex-grow: 1;
-        }
-        
-        #feed-specific-terms button {
-            flex-shrink: 0;
-        }
-        
-        #overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.2); /* Lighter semi-transparent black */
-            z-index: 999;
-        }
-    </style>
-   
+<div style="font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', 'Times New Roman', serif; color: #333; max-width: 650px; margin: 0 auto; line-height: 1.4;">
+  <div style="font-size:28px; font-weight:bold; color:#111; margin-bottom:12px; border-bottom: 2px solid #222; padding-bottom: 8px;">Asia Consumer Weekly Briefing – May 14, 2025</div>
+  <div style="font-size:12px; color:#555; margin-bottom:20px; background:#fff7e6; padding:10px 14px; border-radius:3px; font-style: italic;">This is an experimental briefing generated by an automated AI workflow with limited human oversight. Please verify critical information independently.</div>
+  <div style="font-size:14px; color:#333; margin-bottom:18px; line-height: 1.5;"><ul style="margin-top:0;margin-bottom:8px;padding-left:22px;"><li>Recent attention has been dominated by the US-China trade deal announced on Monday, which has significantly reshaped short-term consumer business strategies across Asia. The agreement temporarily reduces tariffs on Chinese imports to the US from 145% to 30% for 90 days, while China cuts duties on US goods from 125% to 10%. This partial détente has provided immediate relief to Chinese exporters facing existential threats, with some manufacturers shelving planned job cuts and production closures. However, the reprieve is notably limited – the new 30% rate still represents the steepest tariff barrier since the 1930s, and significant uncertainty remains about what follows after the 90-day cooling period ends in August.</li></ul><ul style="margin-top:0;margin-bottom:8px;padding-left:22px;"><li>Retailers are now racing to capitalize on this window by expediting shipments during the suspension period, though container rates are expected to surge due to high demand, potentially pushing actual costs up by as much as 40% despite lower tariff rates.</li></ul><ul style="margin-top:0;margin-bottom:8px;padding-left:22px;"><li>Against this backdrop, Burberry announced plans to cut 1,700 jobs globally – approximately 18% of its workforce – after reporting an annual net loss of £75 million ($100 million) compared to last year&#39;s £270 million profit. The luxury retailer warned that the economic environment has become &quot;more uncertain in light of geopolitical developments,&quot; specifically referencing how US tariffs risk dampening consumer confidence. Despite these challenges, Burberry&#39;s adjusted operating profit of £26 million exceeded analysts&#39; expectations of £11 million, sending shares up over 8% in London trading.</li></ul><ul style="margin-top:0;margin-bottom:8px;padding-left:22px;"><li>In significant expansion moves, China&#39;s largest coffee chain Luckin Coffee is establishing its first US presence in New York&#39;s East Village. This marks a remarkable comeback for the company that faced fraud charges and Chapter 15 bankruptcy in 2020, and represents a growing trend of Asian companies opening their first US locations despite trade tensions. South Korean retailers are also looking overseas as domestic growth stalls.</li></ul><ul style="margin-top:0;margin-bottom:8px;padding-left:22px;"><li>Tmall, Douyin and JD.com are igniting early discount wars to chase cautious shoppers, yet web searches reveal a 6.9% year-over-year sales decline for the coming 618 festival.</li></ul><ul style="margin-top:0;margin-bottom:8px;padding-left:22px;"><li>Capital markets are feeling the impact of trade tensions, with Shein&#39;s highly anticipated IPO – potentially valuing the fast-fashion retailer at up to $67 billion – now in limbo as it evaluates the effects of new tariffs on its business model. UK investors had viewed this listing as a potential catalyst to reignite London&#39;s struggling IPO market, where fundraising dropped below $1 billion last year.</li></ul></div>
+  <div style="font-size:18px; font-weight:bold; color:#222; margin-bottom:12px; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;">
+    Market Snapshot: Regional Movers
+  </div>
+  
 <style>
-        body {
-            font-family: "Open Sans", sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            background-color: #fffefc; /* Subtle off-white background */
-        }
-        .hamburger-menu {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            z-index: 1000;
-        }
-        .hamburger-menu > button {
-            background-color: #f5faff;
-            color: #0066cc;
-            border: 1px solid #0066cc;
-            font-size: 24px;
-            cursor: pointer;
-            padding: 5px 10px;
-            border-radius: 5px;
-        }
-        .menu-items {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 250px;
-            height: 100%;
-            background-color: #f5faff;
-            padding: 20px;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-            z-index: 1000;
-        }
-        .menu-items.active {
-            display: block;
-        }
-        .close-button {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: #0066cc;
-        }
-        #menu-items-list {
-            list-style-type: none;
-            padding: 0;
-            margin-top: 40px;
-        }
-        #menu-items-list li {
-            margin-bottom: 20px;
-        }
-        #menu-items-list a {
-            text-decoration: none;
-            color: #333;
-            font-size: 14px;
-        }
-        #menu-items-list a:hover {
-            color: #0066cc;
-            background-color: #e6f2ff;
-        }
-        #menu-items-list li:first-child a {
-            font-weight: bold;
-            font-size: 18px; /*
-        }
-        #overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.2); // Lighter semi-transparent black
-            z-index: 999;
-        }
-        .feed-item {
-            border-bottom: 1px solid #ccc;
-            padding: 10px 0;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-        }
-        .feed-item:hover {
-            background-color: #f0f8ff; /* Light blue background on hover */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow on hover */
-            transform: translateY(-2px); /* Slight lift effect */
-        }
-        .feed-item strong {
-            transition: color 0.3s ease;
-        }
-        .feed-item:hover strong {
-            color: #0066cc; /* Change title color on hover */
-        }
-        .feed-item a {
-            text-decoration: none;
-            color: #0066cc;
-            transition: color 0.3s ease;
-        }
-        .feed-item:hover a {
-            color: #004499; /* Darker blue for links on hover */
-        }
-    </style></head><body>
-        <div class="hamburger-menu">
-            <button onclick="toggleMenu()">☰</button>
-            <div id="menu-items" class="menu-items">
-                <button onclick="toggleMenu()" class="close-button">X</button>
-                <ul id="menu-items-list"></ul>
-            </div>
+  .table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    font-family: Garamond, serif;
+    font-size: 12px;
+    color: #333;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+  .table th, .table td {
+    border: 1px solid #e8e8e8;
+    padding: 8px;
+    text-align: left;
+  }
+  .table th {
+    background-color: #f5f5f5;
+    font-weight: normal;
+    border-bottom: 1px solid #d0d0d0;
+  }
+  .index-section {
+    background-color: #f5f5f5;
+  }
+  .stock-section {
+    border-left: 1px solid #d0d0d0;
+    background-color: #f5f5f5;
+  }
+  .index-data-cell {
+    background-color: #f7faf9 !important;
+  }
+  .stock-section td {
+    border-right: 1px solid #d0d0d0;
+  }
+  .footer-row td {
+    font-size: 10px;
+    color: #666;
+    background-color: #fafafa;
+    border-top: 1px solid #d0d0d0;
+    text-align: center;
+  }
+  .table tr:nth-child(even) {
+    background-color: #fafafa;
+  }
+  .table tr:hover {
+    background-color: #f0f0f0;
+  }
+  .section-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #032B44;
+  }
+</style>
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+      <table class="table">
+        <tr>
+          <th colspan="3" class="section-title stock-section">Stock Performance</th>
+          <th colspan="3" class="section-title index-section">Index Performance</th>
+        </tr>
+        <tr>
+          <th class="stock-section">Company</th>
+          <th class="stock-section">5 Days</th>
+          <th class="stock-section">1 Year</th>
+          <th class="index-section">Index</th>
+          <th class="index-section">Price</th>
+          <th class="index-section">This Week</th>
+        </tr>
+
+  <tr>
+    <td>China Tobacco International</td>
+    <td><span style="color: #008000">24.62%</span></td>
+    <td><span style="color: #008000">164.27%</span></td>
+    <td class="index-data-cell">Hang Seng Index</td>
+    <td class="index-data-cell">23,641</td>
+    <td class="index-data-cell"><span style="color: #008000">3.38%</span></td>
+  </tr>
+  <tr>
+    <td>Eclat Textile </td>
+    <td><span style="color: #008000">17.36%</span></td>
+    <td><span style="color: #FF0000">-4.21%</span></td>
+    <td class="index-data-cell">HSCEI</td>
+    <td class="index-data-cell">8,593</td>
+    <td class="index-data-cell"><span style="color: #008000">3.42%</span></td>
+  </tr>
+  <tr>
+    <td>Nien Made Enterprise </td>
+    <td><span style="color: #008000">14.61%</span></td>
+    <td><span style="color: #008000">26.60%</span></td>
+    <td class="index-data-cell">CSI 300</td>
+    <td class="index-data-cell">3,943</td>
+    <td class="index-data-cell"><span style="color: #008000">2.52%</span></td>
+  </tr>
+  <tr>
+    <td>Miniso Group</td>
+    <td><span style="color: #008000">13.33%</span></td>
+    <td><span style="color: #FF0000">-21.09%</span></td>
+    <td class="index-data-cell">Nikkei 225</td>
+    <td class="index-data-cell">38,128</td>
+    <td class="index-data-cell"><span style="color: #008000">1.67%</span></td>
+  </tr>
+  <tr>
+    <td>Shanghai Chicmax Cosmetic </td>
+    <td><span style="color: #008000">11.49%</span></td>
+    <td><span style="color: #008000">36.67%</span></td>
+    <td class="index-data-cell">KOSPI</td>
+    <td class="index-data-cell">2,641</td>
+    <td class="index-data-cell"><span style="color: #008000">2.46%</span></td>
+  </tr>
+  <tr>
+    <td>Ccoop Group </td>
+    <td><span style="color: #FF0000">-5.47%</span></td>
+    <td><span style="color: #008000">38.50%</span></td>
+    <td class="index-data-cell">TAIEX</td>
+    <td class="index-data-cell">21,783</td>
+    <td class="index-data-cell"><span style="color: #008000">4.15%</span></td>
+  </tr>
+  <tr>
+    <td>PT GoTo Gojek Tokopedia </td>
+    <td><span style="color: #FF0000">-5.95%</span></td>
+    <td><span style="color: #008000">17.91%</span></td>
+    <td class="index-data-cell">SENSEX</td>
+    <td class="index-data-cell">81,136</td>
+    <td class="index-data-cell"><span style="color: #008000">2.12%</span></td>
+  </tr>
+  <tr>
+    <td>Tingyi (Cayman Islands) Holding</td>
+    <td><span style="color: #FF0000">-6.47%</span></td>
+    <td><span style="color: #008000">30.85%</span></td>
+    <td class="index-data-cell">NIFTY 50</td>
+    <td class="index-data-cell">24,614</td>
+    <td class="index-data-cell"><span style="color: #008000">2.53%</span></td>
+  </tr>
+  <tr>
+    <td>WEILONG Delicious Global Holdings </td>
+    <td><span style="color: #FF0000">-7.51%</span></td>
+    <td><span style="color: #008000">152.22%</span></td>
+    <td class="index-data-cell">IDX Composite</td>
+    <td class="index-data-cell">6,980</td>
+    <td class="index-data-cell"><span style="color: #008000">2.16%</span></td>
+  </tr>
+  <tr>
+    <td>Jyothy Labs Limited</td>
+    <td><span style="color: #FF0000">-8.70%</span></td>
+    <td><span style="color: #FF0000">-25.09%</span></td>
+    <td class="index-data-cell">S&P/ASX 200</td>
+    <td class="index-data-cell">8,280</td>
+    <td class="index-data-cell"><span style="color: #008000">0.59%</span></td>
+  </tr>
+  <tr class="footer-row">
+    <td colspan="6">Market Data retrieved at May 14 at 2025 at 5:37 PM (HKT). Based on a partial watchlist only - not comprehensive. Data may be delayed.</td>
+  </tr>
+</table>
+</div>
+</div>
+</div>
+  <div style="height: 32px;"></div>
+
+    <div>
+      <div style="font-size:18px; font-weight:bold; color:#222; margin-bottom:12px; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;">In Focus</div>
+  
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiowFBVV95cUxNMnVUMm5Lbnc5ZDVqNzJXVnc3Tk92T0R0QTUwd2JMMlBHYmdxTHJQYl9NUWQwVE82cFk1c1dpQXR4NFc5TFUwQk9iaThSUHhSX0hra3BXRGNyYXZoQTROZ1VrSWM2M2Uzb21qYVh6SWNDa1dET2ViVVMyZ3piRHFLTGt3cFI4bEM5WWFBcUpxZGViR0I4Z292OUVHNURTczlmTkp3?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Retailers demand ‘certainty and confidence’ from US-China trade deal
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Drapers • May 13, 2025, 23:28
+          </div>
         </div>
-        <h1>Smart Monitor: Consumer Headlines</h1>
-        <div id="error-message"></div>
-        <ul id="feed-list"></ul>
-        <div id="overlay"></div>
-    <script>
-        // Configuration
-        const feeds = [{"url":"https://www.retailnews.asia/feed","unfiltered":true,"requiredTerms":[],"excludedTerms":[]},{"url":"https://insideretail.asia/feed/","unfiltered":true,"requiredTerms":[],"excludedTerms":[]},{"url":"https://daxueconsulting.com/feed/","unfiltered":true,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Shein&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Baozun&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Tmall&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Shopee&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Lazada&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Miniso&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Hong%20Kong%20retail&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=China%20coffee&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=China%20Feihe&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=China%20beer&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=China%20bakery&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=China%20retail&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=China%20fmcg&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=China%20supermarkets&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=China%20luxury&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=China%20e-commerce&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=China%20moutai&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=mengniu&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=haidilao&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=charoen%20pokhpand&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=lotte%20group&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=suntory&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=DFI&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Temu&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Li%20Ning&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Anta&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Walmart&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":["China"],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Starbucks&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":["China"],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Nestle&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":["China"],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Yum%20China&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":[],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Danone&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":["China"],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=L'Oreal&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":["China"],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=Carrefour&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":["China"],"excludedTerms":[]},{"url":"https://news.google.com/rss/search?q=McDonald's&hl=en-US&gl=US&ceid=US:en","unfiltered":false,"requiredTerms":["China"],"excludedTerms":[]}];
-        const excludedTerms = new Set([]);
-        const requiredTerms = new Set([]);
-        let feedItems = [];
-        let hiddenItems = new Set([]);
-        const menuItems = [];
-
-        function toggleMenu() {
-            const menu = document.getElementById('menu-items');
-            const overlay = document.getElementById('overlay');
-            menu.classList.toggle('active');
-            if (menu.classList.contains('active')) {
-                overlay.style.display = 'block';
-            } else {
-                overlay.style.display = 'none';
-            }
-        }
-
-        function closeMenuOnOutsideClick(event) {
-            const menu = document.getElementById('menu-items');
-            const hamburger = document.querySelector('.hamburger-menu > button');
-            const overlay = document.getElementById('overlay');
-            if (!menu.contains(event.target) && !hamburger.contains(event.target) && menu.classList.contains('active')) {
-                toggleMenu();
-            }
-        }
-
-        function updateMenuItemsList() {
-            const menuList = document.getElementById('menu-items-list');
-            menuList.innerHTML = '<li><a href="index.html">Home</a></li>';
-            menuItems.forEach((item) => {
-                const li = document.createElement('li');
-                li.innerHTML = `<a href="${item.url}" target="_blank">${item.name}</a>`;
-                menuList.appendChild(li);
-            });
-        }
-
-        function decodeHTMLEntities(text) {
-            const textArea = document.createElement('textarea');
-            textArea.innerHTML = text;
-            return textArea.value;
-        }
-
-        function fetchFeeds() {
-    document.getElementById('feed-list').innerHTML = ''; // Clear existing feed items
-    feedItems = [];
-    //const errorMessage = document.getElementById('error-message');
-    //errorMessage.textContent = '';
-
-    if (feeds.length === 0) {
-        console.log('No feeds to fetch');
-        return;
-    }
-
-    console.log('Fetching feeds:', feeds);
-
-    const cacheBuster = new Date().getTime();
-    // Removed apiKey variable and its usage
-    const promises = feeds.map(feed => {
-        const feedUrl = typeof feed === 'string' ? feed : feed.url;
-        return $.ajax({
-            url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}&_=${cacheBuster}`,
-            dataType: 'json'
-        })
-        .then(data => ({ status: 'fulfilled', value: data, feed }))
-        .catch(error => ({ status: 'rejected', reason: error, feed }));
-    });
-
-    Promise.all(promises)
-        .then(results => {
-            console.log('Fetched results:', results);
-            const errors = [];
-            results.forEach(result => {
-                if (result.status === 'fulfilled' && result.value.status === 'ok' && Array.isArray(result.value.items)) {
-                    const items = result.value.items.map(item => {
-                        // Decode the URL if it's a Bing News URL
-                        if (item.link.includes('bing.com/news/apiclick.aspx')) {
-                            const urlParams = new URLSearchParams(item.link);
-                            item.link = decodeURIComponent(urlParams.get('url'));
-                        }
-                        return {
-                            ...item,
-                            feedTitle: result.value.feed.title,
-                            feedUrl: typeof result.feed === 'string' ? result.feed : result.feed.url
-                        };
-                    });
-                    feedItems = feedItems.concat(items);
-                } else {
-                    console.error('Error fetching feed:', result.feed, result.reason || result.value);
-                    errors.push(typeof result.feed === 'string' ? result.feed : result.feed.url);
-                }
-            });
-            if (errors.length > 0) {
-                //const errorMessageSummary = "Errors occurred while fetching some feeds.";
-                //const errorMessagesDetailed = `<p>Failed to fetch:</p><ul style="list-style-type: disc;">${errors.map((message) => `<li>${message}</li>`).join("")}</ul>`;
-                errorMessage.textContent = errorMessageSummary;
-                const feedList = document.getElementById('feed-list');
-                const errorDiv = document.createElement('div');
-                errorDiv.innerHTML = errorMessagesDetailed;
-                feedList.appendChild(errorDiv);
-            }
-            processFeeds();
-        })
-        .catch(error => {
-            console.error('Unexpected error:', error);
-            errorMessage.textContent = 'An unexpected error occurred. Please check the console for more details.';
-        });
-}
-        function processFeeds() {
-    console.log('Processing feeds. Total items:', feedItems.length);
-
-    const uniqueTitles = new Set();
-
-    feedItems = feedItems.filter((item) => {
-        const title = item.title.split(' - ')[0].trim();
-        if (uniqueTitles.has(title)) return false;
-        uniqueTitles.add(title);
-
-        const feed = feeds.find(f => f.url === item.feedUrl);
-        if (!feed) return false;
-
-        if (feed.unfiltered) {
-            return true; // Skip filtering for unfiltered feeds
-        }
-
-        // Decode HTML entities in the title
-        const decodedTitle = decodeHTMLEntities(item.title.toLowerCase());
-        
-        // Extract domain from item.link
-        let domain = '';
-        try {
-            const url = new URL(item.link);
-            domain = url.hostname.replace('www.', '');
-        } catch (e) {
-            console.error('Error extracting domain:', e);
-        }
-
-        const combinedText = `${decodedTitle} ${domain}`;
-
-        // Log for debugging
-        console.log('Combined text for filtering:', combinedText);
-
-        // Function to check if a term matches, including domain-like formats
-        const termMatches = (term, text) => {
-            const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(`\\b${escapedTerm}\\b|${escapedTerm}(?=\\.)`, 'i');
-            return regex.test(text);
-        };
-
-        // If the feed has specific terms, use only those
-        if (feed.requiredTerms && feed.requiredTerms.length > 0 || feed.excludedTerms && feed.excludedTerms.length > 0) {
-            const hasFeedRequiredTerm = !feed.requiredTerms || feed.requiredTerms.length === 0 || feed.requiredTerms.some(term => 
-                termMatches(term, combinedText)
-            );
-
-            const hasFeedExcludedTerm = feed.excludedTerms && feed.excludedTerms.some(term => 
-                termMatches(term, combinedText)
-            );
-
-            return hasFeedRequiredTerm && !hasFeedExcludedTerm;
-        } else {
-            // If no feed-specific terms, use global terms
-            const hasGlobalRequiredTerm = requiredTerms.size === 0 || Array.from(requiredTerms).some(term => 
-                termMatches(term, combinedText)
-            );
-
-            const hasGlobalExcludedTerm = Array.from(excludedTerms).some(term => 
-                termMatches(term, combinedText)
-            );
-
-            return hasGlobalRequiredTerm && !hasGlobalExcludedTerm;
-        }
-    });
-
-    // Sort by date
-    feedItems.sort((a, b) => moment(b.pubDate).diff(moment(a.pubDate)));
-
-    console.log('After processing. Total items:', feedItems.length);
-
-    displayFeeds();
-}
-        function displayFeeds() {
-            const feedList = document.getElementById('feed-list');
-            feedList.innerHTML = '';
-
-            if (feedItems.length === 0) {
-                feedList.innerHTML = '<p>No items to display.</p>';
-                return;
-            }
-
-            feedItems.forEach(item => {
-                const li = document.createElement('li');
-                li.className = 'feed-item';
-                if (hiddenItems.has(item.link)) {
-                    li.classList.add('hidden');
-                }
-
-                // Extract title and source
-                let title = item.title;
-                let source;
-
-                // Check if the title already contains a source (typical for Google News)
-                if (item.title.includes(' - ')) {
-                    // Keep the title as is, it already has the source
-                    source = '';
-                } else {
-                    // Extract domain name from the link
-                    try {
-                        const url = new URL(item.link);
-                        source = url.hostname.replace('www.', '');
-                    } catch (e) {
-                        source = 'Unknown Source';
-                    }
-                    // Append the source to the title
-                    title += ` - ${source}`;
-                }
-
-                li.innerHTML = `
-                    <strong>${title}</strong><br>
-                    <small>${moment(item.pubDate).format('MMMM D, YYYY, h:mm a')}</small><br>
-                    <a href="${item.link}" target="_blank">Read More</a>
-                `;
-                feedList.appendChild(li);
-            });
-
-            console.log('Displayed feed items:', feedItems.length);
-        }
-        function setupAutoRefresh() {
-        const REFRESH_INTERVAL = 60 * 60 * 1000; // 10 minutes in milliseconds
-
-        function autoRefresh() {
-            console.log('Auto-refreshing feeds...');
-            if (feeds.length > 0) {
-                fetchFeeds();
-            }
-        }
-
-        // Set up interval for auto-refresh
-        setInterval(autoRefresh, REFRESH_INTERVAL);
-
-        // Also refresh when the window gains focus
-        window.addEventListener('focus', autoRefresh);
-    }
-        function toggleItemVisibility(button, itemLink) {
-                const listItem = button.closest('.feed-item');
-                if (hiddenItems.has(itemLink)) {
-                    hiddenItems.delete(itemLink);
-                    listItem.classList.remove('hidden');
-                    button.textContent = 'Hide';
-                } else {
-                    hiddenItems.add(itemLink);
-                    listItem.classList.add('hidden');
-                    button.textContent = 'Unhide';
-                }
-                saveHiddenItemsToStorage();
-            }
-        function saveHiddenItemsToStorage() {
-                localStorage.setItem('hiddenItems', JSON.stringify(Array.from(hiddenItems)));
-            }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            updateMenuItemsList();
-            fetchFeeds();
-            setupAutoRefresh();
-            window.addEventListener('click', closeMenuOnOutsideClick);
-        });
-    </script></body></html>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://www.theguardian.com/business/2025/may/14/burberry-may-cut-1700-jobs-globally-to-reduce-costs-as-profits-fall" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Burberry may cut 1,700 jobs globally to reduce costs as profits fall
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            The Guardian • May 14, 2025, 05:36
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMipAFBVV95cUxQanIyLVlOcmxheWZxOU83R3RUQ1pQOTczbW40VmxweXh2Tm9sWTgyMklNd2M5eVVkSl9saHgzSVRIVXI5ektZMXZJa2N3MDZXOEszTllRX1V1cTNVRTJMLUpMZzRvUEFobWtIcWJPT2dfTExRUGhjVlVHM3VQQnQ0THJSNkdVNC1QTXA2cTduaG5PVkJHb3JYeGFKN1A3bW4xMzVHVA?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Man behind the 7-Eleven takeover battle: Alain Bouchard
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Nikkei Asia • May 14, 2025, 07:53
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMipwFBVV95cUxNV29zVnZOd21VV1ExUUJVZEhKajVRTlZJZnJ1VHhpazRCQXFBNWtkMnVzaGVPcU5sRXc0Y2ZnMnR5czFZTTI5TlFjUTlUY1JJNUprMmZFWDNMTi1GS0wtLUVZQjJ4MDVub1I5b3hvYjlPM3RVTFRncktQVHE4RS1qY3VFRFpKWHl3UndpM05hVTBlbUlVYWltZ1lNTno3QklyV2JCV0l3UQ?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Luckin Coffee to make U.S. debut in New York City
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Nation’s Restaurant News • May 13, 2025, 00:35
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMipAFBVV95cUxQcGFQbk5UOXBaSERCbWtfZDJTMlBpbV81Nk9rTDZzZUNGNWgyUkVfX2Eyb2NNTzNMV01SSVhma01yRWVJVlpoVHF3dTk0WUJ5N1hYeEpRU2c0ZkliZHJrR3BITDd6bURCaTlTbTVPV21lN0Z6VmVkYUVzVU1Ea0tVUm12WFpNbFdOUUs0X2g1RkpqaEZvaGc2QnI0WGszUV9UMm15eA?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Shein’s Derailed Listing Has UK Investors Looking at ‘Notable IPOs’
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            PYMNTS.com • May 12, 2025, 05:07
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiwwFBVV95cUxPTjdtMGxjOTlzVk1JZ3U5VHhrZGJLNDB6ZHNfNFhKem92OEM0TWNwYmZmT0Nub3NCd0I2TkR5cGkwRjFCTXFoSTJTQnRnWmpjbEFoUXhKWl9FdEdfeExhdzF5d1RUUmNWZi1fbURmdjd1RExDbEpyZ3d5Y2ktZ1lCQjdPa2lOMUNrVXlqbThpMDl6ZEpqUGthaVNEYm4xenFmTS04T24tdV9QRnNiNUMxRkxfdUlKY1ZJUmEyNGgyQnpOMFE?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            All global travel retail eyes are on Asia as Hainan stumbles and India rises
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Global Drinks Intel • May 12, 2025, 17:38
+          </div>
+        </div>
+      </div><div style="border-top:1px solid #e0e0e0; margin:24px 0 16px 0;"></div>
+    <div>
+      <div style="font-size:18px; font-weight:bold; color:#222; margin-bottom:12px; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;">China</div>
+  
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMi7AFBVV95cUxPSjNSR01vZFRTOXM2SzlzWnVSOWZKT2lkdW5QQXJNQjhWUkFoX2J3X1laY19GVkhCOUFHdlhON0xycElqSzJfcFc3M0Q5OGhoYVV0S3ZNSXBMR2VtaEZqOEVJOE5qQWhPc1dGNjVyZEF0Znh3amdEMHlKVHZONjZ0V2Q2bFctTEFSOWJnWDdzeks0MmQtV1pPc1ZGV2lzSmRZc3FjdFZkSldfVEFnR0hUdmNFTHoydl9RNEtUWV8zOUxFREFQOTROSl83cm5JMkdqcGRXTVZrN2VqaXk5cWRpWTdXb2JBOFJrS2IxcNIBgAJBVV95cUxOSVRidUhlRnhRb2NDc3hobHUxR2lFT2EtYjI3LUw1dy1xZ19aZjlwMlY1M0hzOXVQekJLbkI5cUt4Q0pLU1ZqSUYyYkJjVExaQmZhTGU1UWo0NndHc0lRTHM2aktNVTRCa3dhTFFfVWs1N0VrY1VVVDVFZ3RlbzBjd0c0SjlWSG9VN3lRWkoxSm16NEtDR08zeXZyRlJUYVBKSEtRZHdMNFREdDg0VGNxdE9zYUd4LU9xT1lFandidnhzSlBnVDVDbGlXYlB2UVh6TktrdlJWYmdTci1uQUFTUFAybTFFbkRPSTBOZWpLREdveUNWbC0zY01melBtVVBy?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Bad news for Shein and Temu customers: These products will still face tariffs despite the trade agreement
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Diario AS • May 13, 2025, 06:51
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMivwFBVV95cUxNLTJiWlR5M19lMWZHYjNIRUFwQjEtMDl5QlRidks4LUVtV29hRWRsOVNSM2lJQkdlbjg2dnJMdUdCSkQzVk1Renk0SjkyRVpBNHRFSWxENUVsMFctRmdrMWxTVjNVNE9YcWx3VzduNnhwRlRDOTRZeldYbmZZYW9qbUM2aHE4TVd4bkN4cmZ4UjRkWkFUeHZHdW9qajFJamJNNl93cnBscFVWUThGNWFLRXFpR2t4TmhnU05zNTQ2QQ?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Chinese e-commerce giants make expensive bets on fast deliveries
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Reuters • May 13, 2025, 08:46
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiygFBVV95cUxQMFI4MnpuYy1sWHl0TEd4b2ZqRm5sQjk3Wm5Vajh6VlFfUlpicUhuNl9MMjd2eUp4bFdUWlFUN0s2emxSUW1XT3gwVmtyQ3AtR1pkdERLT2F4RmxVdGl5Z2pwa2hvVDBjOWRZejQzOUNIWEUxdGg5Sjhib3hZazBLWVBHUEtrUkFOSUZTUDFodkxrUmJhZ1JGaUYxdlNIUGlSbDVwbExJdkI1UHpPWUJfZklvN21vVmNaT0NHU2llYk1mczFWNjd4Z2Nn?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Douyin, JD.com, and Tmall ignite early 618 discount war as platforms chase China’s cautious shoppers
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            TechNode • May 13, 2025, 17:41
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMixgFBVV95cUxPRlNETEZ3RXFVRzJ6UndGbEJaRXBtbG1KWFdZS0xtbFlOd2s5UWFDZFl3Z2VNcXM1cHZEc3lUb2R5M2JJZGVxSUZ6N0g5Z3ZyRS1kRnpFZEtBLUJiWU5KMU9rTk9CX2xYZFM5VFBsaWxwVXdGUkJtYS1EbFVrZ0VwRGZ3N0xXYWRaaEJYaThSbWZ6UjZwaFVBMWJ5Q3hXcktVWk1Fd2hOT3R6NUJSOXhqeHRkX0pSRFFBc0ZEeVFRcDZubmRCc2c?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            China bubble tea maker Guming raises US$232 million in IPO, term sheet shows
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            The Standard (HK) • May 13, 2025, 11:27
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMizgJBVV95cUxNVFZOaW5QUndtTjNNM3J1VG5DNkp5dEVTdWhGMVpzV2tEZUI3Sk5sejN2c1AyQTJ3SW9wRWpyVEJKMG5LYlVaTlNVRDlXVXp0c2R6QUhSNE9McVlBMlJGSWlmMkwzbHlKbWI0Wm45WVd1VUMyZ2dINXllVXVXWVJTUS1PbEF3Vllpc01BUDJiTTlrTENhZ2kyWFpFLU1BV3dIeG9pWE9LUVpQdWZqclpSRWptTVBaakRWcUo2bjM0ZEk3UjhvcWY0NU9pbTFRQUhJenh6RE5ldVFHT3F1N1MtcXJqbGVZX0xlS2JYOV9NTGc2a0VDTWxzRmJlcGxkc1FzQkZNbjdIX2EwNHg0cUp4d3N0NlA3TWpvdzVrcmkyc2N1YW9Nd2JGazRLMlVrWG1OOE5iclRvQXJibGtFdnJCX1V4UElEV1pFbTlrR1JR?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Labubu toymaker Pop Mart is latest Chinese app to go viral in the US
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            MSN • May 10, 2025, 10:18
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMibkFVX3lxTFBmeERhQ0UzM3dGMER6eHJGYlhDWHlucXoxSllQd1Q5TDBzZ21OX1l4cWpLay1BekhqLVJZVWZSMjRsU0ZDbzVjUFF5Z0dGeXNKWHJ3eHhqU2xqWU5fZmR1dkpKSk85cVNsWjNTd25n?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Yili Accelerates Regional Presence In Asia Amid Rising Demand
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Bernama • May 14, 2025, 10:42
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiekFVX3lxTFBEQlNjWktxazgxMGIwSlhDXzhlYkRHQjd3SmtYOUIwNTc1TUNubzRKV2Myb2sxYUE2TzlJYVBRejFDUlZLUnl3ZWw5QmdKY2lhMDkyMVJxY2xXSGExSkZPZWQwVmwxdHdZdWJyS1lmY1JfODF6dTNaRm9R?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Can Mengniu stage a comeback after a bruising year?
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            KrASIA • May 12, 2025, 08:36
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiswFBVV95cUxQY3RobUc5UUsweUhWLXU1UU1abTFKOWd0dlNhajNmUFlWeGl1NUlFZ2h1bW9fMktPOGpzVXFMRDg2Skpza1V3MHk0MXpfcjNHdEVMdlpheHlQeDhRVlFoR2VEbWpOb0w2OEoyT1Z0SlhpakxfQkxXd2hKRjVka1FLam54V0lmNXNkNWtOR2pocEktUXRjTENkU1JyZFlBOG9CS2g2VjNKdXFKOFNJYV9tcXlQSdIBswFBVV95cUxOdGRzWExURF84LW5rdU1FQ2FwWnB2bHNKcUZ0dUVoS0piWnpBaVRwNnl1WUNySnkybE01c2dDTnVCZGU3SkRBaTBPdU9waWdHMndjdnJ4Z0x1Rndfa0oyZFVYSlc5OGY4bUZ6a21MeklPMFV2dEJqYzBaZjEtdm5XcnJNRU01OXBSQ2M4WFZ5cjZqQXpLRXlNNXRzOVF2WUhPc1Jkczhtb1RtakFHRFVXa19rcw?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Starbucks, Luckin get buzz from smaller-city coffee sales in China
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            South China Morning Post • May 11, 2025, 09:30
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiqAFBVV95cUxOWHhhQ0l4RnVqV2JuR29GSmpKbWtFWTQ2UnEtVmFoeEE2cUhycUkwNXBDTlU1cFd6bl9OeTRyQmF6amMyRnhWWDVwcGF1QVFBcVE5WUV4UFZCSTRnU1l3ZHp1bFROY0RDYWRqNi1lNndMOGY4bUd5b1N3SUlHX3VLdkd4eEtvN3ZIZjhiRkFMcm5LVnhhQjBTQlRWcU95QzlFdmRkbi13Wmo?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Starbucks CEO’s Toughest Test: Chinese Rivals Are Stirring Trouble
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Industry Leaders Magazine • May 09, 2025, 20:35
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMi0AFBVV95cUxPU0Y1c3BvZm1ZYjNFZ2l2RzB1Mkp2NGVFQXZUT0ZXQ2pJaVpvM2RsdjI3NVRhb2FrZFJ3bjExSU9hUzMydXpxV1VhUFlsNWJTSUhiM2pWX2o0UDRmTWw5eFl1U1hHTDItNURVcXdUNVJyRTVGLXBXenRJUTZSdXRlX0h6RWNzeTFiREt5Zm0wU3F4ZG02eFNQU0RmOXBFNklsb2V1T2tKc0E2X0cxUXM3bEJ5cDRqRHpNWXl6UWw3Z1BnRTNUSGVsZGV2aW1QamI3?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Yum China targets 1,600-1,800 new stores and mid-single-digit sales growth for 2025
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            MSN • May 09, 2025, 21:16
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMifkFVX3lxTFBPSUlGaXY0NExYQjVxSEtuSnJ4Mzgwc2FYTnZaRF9zZHpWS3p6eTNXRzhsY1BxTUZ2UVB4ak9MRllUQXh1ZS1KX2xyTGtZTUJ0U211TzdJOWREYXVHd01ob0lDQmlmdGtsNC1VSFAyUktzOEZfZnBVdV9mcURldw?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Nestle aims to tap into high-quality coffee experiences
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            China Daily • May 10, 2025, 10:20
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMivwFBVV95cUxQTjA0SExUcGdFOUg4d1dhb3V4bjJoM0xjSENKYnpFb3NZOHZudmkxZ2R3NjRPVXpxbVBFQjR4eEI2V2c5a1l2eXFkLU9EMGtLSWFydmhKQ01lTWdMMXp3U0x2bjBwTXF3ekRTT2JYSEpkU25lYUd1TTU1VHdWbmVpVXNxLXhuRy1KSzRST1ZTQVBVaFlnQ093cnZRaWlKTjhMX3p3bmJ1X3l5QzZsbHFNR1dtenpSMGVETHhzdnpMWQ?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Colombian coffee roasters seek to expand recognition in Chinese market
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            bastillepost.com • May 12, 2025, 16:46
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMizAFBVV95cUxQWk1vbVlJQVVXQmVtM3drY3BRYnVLeDFaUFExSlhqcDZwVkFpVzl5WmtCbWNEcFZrWHFtVUNxV3dGbkYxaUZoM3B6YkpJWWk5eU5aalVmUG9hVEctSEkwN1piclpXdEVfSldlZDdjNEJyUllMd2dTa3JyMHd4bVdxOUZNTUJKOUs5dmJFMGYxYXVKVVBORVZ3MWdwYWJWaWRDTGtoUXZJbjZiZWEyOUlHWDdHRmtISVNGMWtnWl93VHFPd0lyVXhSN2dWbGY?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Taobao and Tmall Deepen Ties With Xiaohongshu Via Cross-platform Shopping Function
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            MSN • May 11, 2025, 12:46
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMi7gFBVV95cUxNNE11N1F3RmZSdm9uTFlNRnlScWZVTmJXV0k4VEZoOW9meE5acHdHV25tSGU3aEVuTzhRZTYxTmctYWxUNmw0bVQyUmRVcUxVMTRPUzA3MjBpTVAyZThDVjF0ejUtSENiZWFSbGZySVA5bTUxRjZPUHJ2Q0NkWTEyREQ0RjcxM2tqbEJaMzBTM2dSM181UTMzdVJ4aUMxXzZsMzFYSTNici1leWx5LTZ1b2NscWlTVzVyeFVSRlhodmNyeFV4NnVETEp6NjZVeE1YQzl4MG1NRV9BTXRJSVRTaFlmVGowbVgydDg5SjJR0gHzAUFVX3lxTE1xY2ZDak9aU3RoVU1DS0RzaHdDU05Td1lXbFh5enJIWk14Z0JkVi1jSzBNWnYwb1lhSW1KbGNBYmRNVHJxV3J1QVRTRVVqZVk5VkZ2d1gwempJLURtbWYyeWZGcWlneVFteHZDc2REWG5KQ0pBUG1kV3BNb0pQXzRoaU1HSEYzWjJIY0xERjRUVV9fZ0YwWjBjMnNwZUpyLWpzTFNxaUtYbU8zUDI1OXo3bGVnMDQ4Vlo4a3dia29HS0xrQkJHX0JlbGJRd1VjTXhDUTBBaTZIOVNWZ3Rka0JBbWhjZTBqcm5aTEdxdzZWMHBuYw?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            China&#39;s JD.com tops quarterly revenue estimates on steady e-commerce demand
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            ET BrandEquity • May 13, 2025, 20:10
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://daxueconsulting.com/guide-to-e-commerce-platforms-in-china/" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            E-commerce platforms in China: The battle between shopping titans and rising stars
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            daxueconsulting.com • May 13, 2025, 13:57
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiqAFBVV95cUxNdzkxOWdVZnVmaVNvV3oza3VjVS1fSjJFWVFGY1BZTDNkZHlUX3lIVEVobWFOTzJYZ0JfTFNqSmJOQnJTQmZjaDFQdWl1bWNnU2ZKOUZrRHd4UzItYV9ncnNDODJXc2NKakRscmJsRy1qYkliSkNzaVdLUk0yb18zQk0xeTUxMHhwYTd6NV94VWxoTG5ZbVU1RVg0TzFJMnpURTdKVjg2TE8?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Retail Exodus: How Companies Are Navigating China’s Exit Amid Tariff Challenges
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            WebProNews • May 13, 2025, 22:11
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMijwFBVV95cUxOTzVCajVUQnhsck1jODVBZm1tNFJ5eGRkVnpGUWxfNWJLdjNta3VRMmJudWhCMmR6Q041Z1pDV2dPY0pIZEJSdmp4ejdMTlYzOVJkX0hDc0ZiekE3MkQxcEV1b3pUSi1YVEJKYUIzWUxTcFI2dkh2bkVkVWNmVUVhbE50Z01FRjE0U0l3N2JDcw?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Luxury Labels Ditch Steep China Discounts to Rebuild Value
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            The Business of Fashion • May 09, 2025, 17:31
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiuwFBVV95cUxQQlg5NWtuN2dDbnJ6WTdEY1dzWDFscC1tNDY2SlVPUU1QX2xTV0VhdldGMUZWT3RDcmpfSWhyNnFyanNNS3VuUGdaUnVRRm1JX3RMX1ZDaVRjWnJKZjRSaWFqTmk5R1B5RXpSWmJrVzBLX3k2U0NLRFdGbVVxYVFsUG9KVW40WmxIVGdZa0prdkY3UG1jNk9MYVV3Qnk1YVB2alAyeXlMSmtOTW1vVGVySHVzUVd2V1AzRU5j?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            China’s fashion revolution: the rise of luxury clothing in the east
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            The Times • May 10, 2025, 06:00
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMisgFBVV95cUxQckNmOUtTUDBlWEZoMXU4UjVaYWNIdnczYURzRWVlejRNUzhtZjh2WXNKX0hlYXlQWGNlMEc4cHlTWUptZjJtVl9na0d2MGtORXp1cjBkN0VHaUdPMHJMT0NKMVZFWmNQNUhFYXFLYXlrY3BSMGJnXzFtZi16QXNPRUw1bXp2b213VWdKOTZld1BvVFZsNEtnSS1leER3UEpJMmVqYURRMFRkdWNOMUdWekN3?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Moutai Hopes Cultural Events Can Win Over Global Drinkers
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Caixin • May 09, 2025, 18:47
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMi3wFBVV95cUxNY25MLUt4V0JSUnhXZUdGYTdLVklUdE5RUnU0aEp0M3dPWE83Z0tFTFRQRWpRSjJJeTFEZTlhbHN5X1A1YXZXMHdnX2RsNXdRcUlIa25EdDd6Uk5yTk80OW5ncTlRSlFSUkIxa1Rta2ZSSTl3NldzMU5yYlVxTzBQWnFpUU10SVdxSFdDZXZyNkp2dEpfanF5TWd1SHZkZkxoM2hQbzl5UUNhdFBFOHZFd19PY1NlVGNSMk5YV2M2Zm9VTDB5b3R0LWxEdlpYZGZ2c01hc2d4c1UtdmVsLV84?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Chinese Tea Chain Mixue to Buy USD556.3 Million of Brazilian Produce, Enter Country This Year
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Yicai Global • May 13, 2025, 16:27
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;aid=&amp;tid=68242a9cbe0b428a9330ae875088f218&amp;url=https%3a%2f%2fwww.msn.com%2fen-us%2fmoney%2fmarkets%2fchinas-consumer-prices-fall-for-third-month-in-april-ppi-slips-again%2far-AA1EvkkV&amp;c=8447677830767959732&amp;mkt=zh-tw" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            China&#39;s consumer prices fall for third month in April, PPI slips again
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            MSN • May 10, 2025, 03:25
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://daxueconsulting.com/chocolate-market-in-china/" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Foreign flavor, local twist: How the chocolate market in China is evolving
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            daxueconsulting.com • May 14, 2025, 11:06
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://daxueconsulting.com/health-supplement-market-strategies/" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Health supplement market strategies in China: From pyramid schemes to billion-dollar livestreams
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            daxueconsulting.com • May 12, 2025, 15:01
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMimAFBVV95cUxPTVluNmhfMzVGelBTS2R0dnkwNm1vNFhfdVBrM3ZHSktIcHVkSFl6SS05QVlkM2JfaGRzc2NJUmtPaFRxazRjd0hkeHhqSnFuLWxhSG41bi1nTDliOVdOSTg5Y1A4RVBXTmR0NmxvcEFRN2NtR3NINGNUcDRKTndseXRENVJxTXlXWloybXU2VGxkZURYLWRDeA?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Midea to Buy Dutch Heating Giant BDR Thermea&#39;s China Business
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Yicai Global • May 13, 2025, 19:33
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMif0FVX3lxTE9pTHhuY0xEdFRUY0V0ZFN4alhBbjRmb0J2R1Z5T2pPZGhMR3ZxY19oeGJpYVdURTV6ekswNmN6Z0RUTGJoakdqWE1aaUlZMGFuajhMMjF2cnJORHR3bWFXT2gwX2ZJVDlndnhOX3Y4TGZ4ZHJMTEU5Zm1lQ3g1bmc?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Teka Group Acquired by Tech Giant Midea
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Kitchen &amp; Bath Design News • May 14, 2025, 10:51
+          </div>
+        </div>
+      </div><div style="border-top:1px solid #e0e0e0; margin:24px 0 16px 0;"></div>
+    <div>
+      <div style="font-size:18px; font-weight:bold; color:#222; margin-bottom:12px; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;">Hong Kong</div>
+  
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMi6gFBVV95cUxQLVB2QV9wTkl4OGdwWk1MTXpTdlNteDRnbVM2LW1pTGVFVnpLcHMtM0NQUXZlbVE4enNoMU54a2J3MmFNclltVzdaQ1dTWlVBMldBSTc3UUFJTGZodE9BNDdQYVkzRXFjSVhCZ2FaSm1lcVVCdU9VRmo2aDNUc3dvODJtdVo2MjlmVkVrSmdhbUJSaUlrUHg5Y2dzbmhlMi1BbDdGeThwYTRyZnl3dGFsYm91V3ZOTDdoZnZfWFNsbUdBLWJPVmEwcHlCMmlWS2MyU1ItNXd0NUUyVmZGMXI5bWxvWW1mX2JHZWc?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Hong Kong district Tsim Sha Tsui tops global retail rents, overtaking New York’s Madison Avenue
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            VnExpress International • May 12, 2025, 17:28
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMixAFBVV95cUxQOVl0NHNaQzRPRjhBQWR3ZkRNczBYU3hOV3BtaHVrYzUxLVNtQ3RXb1ZFc3R3eE1oUmFBaVRLbDJJRkRSUVowUmNYZ05MTXhxUnM0Rm50NnY5ZTFTTkxFTmFQSG0tZE9oNUdNcUx4R0NkNDdSTm9tbURUUFR6QjladkF3RWQwdWZjb2hvZFhZMGhFLXFPTUlwMkxmdHJOV3h3a1NjZUJpVF9mbnZhdG5Eem1HT29PalFqeEVLYnl4YVRXMFNO0gHEAUFVX3lxTE8tbnVxSjVUaUIzRWdfZmNqTmpXSFpUMG1UTTRKNzlkdkw2LWF1TnU1cWJqV1FsZXQ0MnhMa2pCaW9xLWdGNXZyd0ZhUm9rRmRoUHFCZ2FIZmxkTjVTMW9CQ1I4V2htbmRNXzZCN3VRQjNmUGhXWmdrckNiVzRwMHRZN2d0RENuTXVTOEJSOWVnaUhUd2RtLVNMWEVRZUNZQXFWUnB0amR2ZUY2WDlFeUwteWpYaFlEaTViS3Vzem9tWGxmajk?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            How do Hong Kong’s old shops preserve the city’s history and charm?
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            South China Morning Post • May 10, 2025, 11:00
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMickFVX3lxTE1WazhnanM3bE4tczN3ZVlET1lzeUN1aU5ZYlY2bmktbHU0UUJiSUdXemdzLVdqWXR4S3JnTmJtSDZiRm9XWGo4SUMtR0dteC1mcUVDVmx3eUpDRjRXWFdCVXREVFM3QVVic3BBRDljckNEQQ?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Hong Kong’s top 10 new shopping malls
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Dimsum Daily • May 13, 2025, 19:25
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiuAFBVV95cUxPUTBpMkIxYVBDOWd1TDRNOHJrX09qSFlDX3RuZXhNdXVIZTVsVTloU0FMRWZfQzYzODVKMWo0SE9fUE4tUzBZOEtkR2pYYjNIY3JacTV0OHBaRUxNMnR1ZzRXbnJtX3ZmbWlacUpfcjVscER6Sk9lNkN3dTRpQldYQ2lqLXY4WGVVTHJoOVV0aEs5QkxCbWtkdlBSZlhDdGR1UlAzNnQ1YlFSMHhOMFNuRFpSZkRTc1RK?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            How Chinese e-commerce giants are reshaping Hong Kong’s retail scene
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            MSN • May 14, 2025, 06:16
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMikAFBVV95cUxPUXZrakNhSVZQMGJ3dTk5bGdQX1FuVjItU3lySGprQ2F1THhKVmUzOHdfUUFDbEZZMkg5NlQzMHAtNDN3c2JUMlp0ck9sbU1oY1duNEVHZjFDSFlsa3h1X3d6WUZvdHZqMk1NMWJPZ01PbmtzTWJWV0RSSWRwSlVQQ25pUEVVRDZBakFrb1o3bkE?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Bacha Coffee opens first flagship store in Hong Kong
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Retail Asia • May 13, 2025, 10:29
+          </div>
+        </div>
+      </div><div style="border-top:1px solid #e0e0e0; margin:24px 0 16px 0;"></div>
+    <div>
+      <div style="font-size:18px; font-weight:bold; color:#222; margin-bottom:12px; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;">Singapore</div>
+  
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMie0FVX3lxTE1WM2lXTFlsOVNMckdfZ0VjbGtva2RKeXhTQmJrQ1Bqa05iX0xGTm16RjVBdVYxc2hneEppWEkwU2hnOGhiS09SY2NTa1FrVjVkTDBGQVdmYnR1QkpPVHh2YXJmU1Q0clVaek1nUTA5ZXVwM3p0aGxwYWZ1NA?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Isetan to shutter Singapore store
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Inside Retail Asia • May 09, 2025, 12:43
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMizAFBVV95cUxQVVNQZzFJQnlKYVpNa2QyTWNqT0FuS0pHTWNQVl9WNHRIdF94bTJ2Qm5EV0Q4bTNLZTl1V2xPeldiNTBQRDBGU1czVERROENRMF9RemNOQ3BncWk2ZktOMEIzcmtOWlc4Z0tKckhPMFVSMGVabG1aM2F6dXBkejVRSEJCbUxnMENCZHVEeUdDSmFUaUdEbVFvMHlWdmgyOTFqTzh4elRYamRMZkZWZ3FQWHd6eUFSekVWT2N5dXJnYlZNcy1kWjMwd1ZqYmE?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Sea swings into the black in Q1 with US$410 million profit on surge in Shopee, financial services earnings
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            The Business Times • May 13, 2025, 19:29
+          </div>
+        </div>
+      </div><div style="border-top:1px solid #e0e0e0; margin:24px 0 16px 0;"></div>
+    <div>
+      <div style="font-size:18px; font-weight:bold; color:#222; margin-bottom:12px; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;">Japan</div>
+  
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMisgFBVV95cUxPVWlXSE1zTVVsbzV5UFlqSEJJLVN3cmVoc2N5X2gxXzFlaXd0bWV5YVUyRDJib05ZdVR6ZUFPbUVFbGF4cHFTV3JzS3Mtd1dEVzRaMmo4UGRIZDFub04yMnJlbU4tY3dMWlJtV3U3aU9aRFpoT0hnM2ZOWjloRGxuMnNLZzJ6cVJKemdjcVhNS2VsQjh3bEhqU0xDWkE5a3NDNHc2MzNROFA5SlM1NTNpaXpn?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Kirin Q1 Net Profit Down, But Normalized Operating Profit Rises; Confirms FY25 Outlook
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Nasdaq • May 13, 2025, 15:24
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMivgFBVV95cUxNaW0wOXlqNWJMTVlOWDQtOXh1aWlMRUFHejRQY1VvMmQtS1Z2MmYxeEF6OGpKREdrRFpNdDJTbjd1VWxwR3BQWS1iU1hjMWZBSzF2enNXQXkwYjJKMWdBa1p0UkI0YW5POE5yX2hBTnFfa0NHSUFwbkdSUGtNQVFyeE52c0pqU3NEVVNnMmI3cnFhbk1LX1VsNGpXOVJnc0ZCcGlKbVFJTmNiRUM0RWFuUDdNN2ZqMXhBNGczOTV3?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Nissin&#39;s first-quarter profit declines 6.7pc despite increased revenue
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            The Standard (HK) • May 13, 2025, 15:40
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMipwFBVV95cUxObXNHZDRhbXd0Nk8yVjcteFVCSE11dGxzcFc3VTMxWXZwYmlyVGstQkJSSnlZLURCRHkyUTFBaENXS0kyMmZ1ZWwxSXQwWlB4TXNDbGQtSE1nZHBSYjVidEdlRjlDODZjTTBaMVYyUGltWVZoTDBCYzd2NTFCRDQwYXQ0ZHVGZnh1Mi1YQVVvbVFtdFh4MDEwcGFINDRleDY5NDlYWk9lMA?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Nissin Corp (9066 JP): Bain-Sponsored MBO at JPY8,100 Is Arguably Light
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Smartkarma • May 13, 2025, 04:01
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMimgFBVV95cUxObDFVQ19jbHFGcHpKU0diX2o4R3lIa3l0YlJnaGtBSGFramgtNnBZY2RaV0NDMWg4T2x6RU8xemhLX3FEclNvRmpNVkFuZURrenI5V0c1MVZnTUUtLXEzRHN2a1BmUEQ0ZlRtS1ZMQ2piZ2lZT213bEVkTWd6TDhCTWllblNGWi1oajRiS1RCbWJsY3l2VWRFcjRn?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Shiseido Returns to Profit in Q1 Despite Decline in Sales
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Global Cosmetics News • May 14, 2025, 13:02
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMihAFBVV95cUxNVFhIcGN2LWw5bG94R3VHZkJsbm55SDNzUk9XcnJPSHVhMTliTmlha3hoVzZubG15NlZBZFhPRnJUQWRNR2l4SHFtdW1VRTctamdQNjEydk40LTB0QXJ1RjQwTkhXUXc0NFg2c3VDV0Y0b2ZIbmtnSGY2QnRyaDNtU2ZwUk0?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Shiseido blends beauty and science
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Retail Asia • May 13, 2025, 10:56
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiogFBVV95cUxQcEhiZUF6VHBtcm9UaUZpNzVLdU4zSW1VNkRSN3NKYVV1UGhJWHg4V182NXVCVUZ6aVJiVU14QmRIbndNVmZsR1hYSDBmTVZJNEsxcXZJVW80WkRzSzdacUhSUDMyc29WQ28wUi1QY3lkdVNTNl8yWmNlRUFlVjhMRldfd24zOUhCbHkyRWVBdC00ZlpIX3ZCemVkUk16SW11UGc?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Yakult Honsha FY Net Y45.53B Vs Net Y51.01B
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            MarketWatch • May 13, 2025, 13:20
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMimAFBVV95cUxPWnlxU1ZBcDVnV0FabWFYLTV6RUZXck5KRDR4Q09DR2p0RjNmRXBNN3ZlN052OTc1RFNaYnE5YkpyWnFpVWxDbG1hdmJoY0hyVkxNcV9Rc1JHTnZhZWdIemV4U3IxeGh3TkZ5c3pfN3B6b0lDOHNRLS01TEpqdzliZG1wb3A4eDY1Uk9VM0kwZEY4bHBERzJ6cg?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            How Suntory uses heritage, celebrity endorsements to strengthen brand
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Retail Asia • May 13, 2025, 10:40
+          </div>
+        </div>
+      </div><div style="border-top:1px solid #e0e0e0; margin:24px 0 16px 0;"></div>
+    <div>
+      <div style="font-size:18px; font-weight:bold; color:#222; margin-bottom:12px; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;">Philippines</div>
+  
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiugFBVV95cUxPMFhKYW9sWE04RURzMXptWXZQeWhLYU51U2NDel9xVjU1R0NJenpxLUdQVkt2anM3dVBINXBfWUM2Zm5ETGZMdXJ0eFRzREg4dGF5OHJxYW9kQlhXUFZVV3RxdWRtY2ZhYy1WaHZBXzZtTnRKMnFtS2dTaGNtdGtGeTU1WVZjZ2dCNEEyN0s5VGlTUEQxdFVfaHpiOER2dzRHaDRJSGRXLWlKYmg2LUNwZ216ZTgzRmljT3c?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Robinsons Retail CEO tags medium-term goals
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            MSN • May 13, 2025, 02:38
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://bilyonaryo.com/2025/05/14/from-vineyards-to-distilleries-kevin-tans-emperador-expands-in-spain-mexico-uk/food/" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            From vineyards to distilleries: Kevin Tan’s Emperador expands in Spain, Mexico, UK
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Bilyonaryo • May 14, 2025, 08:58
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMilwFBVV95cUxNZGNtWk5UeXBxSWFrOVJRVTAtZGhVMEk0S0dvd2FzbUp3Q2ZEMnNORzJ3d09pWlZtazZteHV6bndhUHdvS1VXSXlXQlpkcWcwMWpzeU5yR1BsVUd6S0ZKWjBJcjlqYllra21fUUNXVWRPYmlvdjBRTzlhbnBBYTBOU1ZvRVBiT21xenVUakpkVXJJRlpKS28w?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Emperador ends quarter strong, ramps up global growth over next five years
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Manila Bulletin • May 14, 2025, 09:12
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMipgFBVV95cUxQd1g5bTF0aVRYc2NiYzJaeXhsbl9HbDZpdm5Uc05JQVVBaWIzVHM3UjNka3BiZkdkdHJ5b0ZzamR4ajZqZERxY1h0cWo5bm0ySUtockJYV0hUTTM5cExmS0dpbTlka2Nhek9lbVcyd0JTYUVWM3NqRlBGanN0TzNFYmRsd2oxY25WaUVDQ255d1hHZ3JoUWlZbE5lRzlQdWpSSF9DUG5R?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Jollibee posts 8.1% decline in income on higher costs
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Manila Standard • May 13, 2025, 20:25
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMilwFBVV95cUxOX3Vsb3JZMjllNWV5Z2Y1eDlzLWVjbTduV240VGVRNXJTcHF3VWY0UzdKM1dNSTRTcm1yaGlOQXFSdjJIaGNLSjJHOFZmemY3ZzRWUkNQN1RzemZsVDkxUG1KMGpWV2NCNmhyQWRPSC1kTTlfMDN5UmZHb3hXM1hWRWV0MDN2MERvRW9fR1A3M0VCaGhNMWgw?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            San Miguel Beer Unveils First Filipino Wheat Beer
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            ABS-CBN • May 13, 2025, 15:28
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiswFBVV95cUxOYW8wRzVSSDFJRHRNbklpcVNxQ1pLU25VMnhsVW9sRVN2VDdTMlIzNDBXZEl0LUtNbXNyanNZSHBpQjRxN0V6eXFIMVctaXdEVmU4bk83MFRoUnJwdWVJbVRBS2t2OGZIZmRPNzF4RnJ3emFmNU42aHZMYUVHWnRNUXFCZ3NLZDU4MmFoX21vWnlaeEZaXzZ1ODEzUDlTNHVBTVk1cEhPNWpRakM5LThOQWd2Yw?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Shareholders&#39; guarantee for meat alternative losses pull down profits of Monde Nissin
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Manila Bulletin • May 14, 2025, 13:17
+          </div>
+        </div>
+      </div><div style="border-top:1px solid #e0e0e0; margin:24px 0 16px 0;"></div>
+    <div>
+      <div style="font-size:18px; font-weight:bold; color:#222; margin-bottom:12px; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;">South Korea</div>
+  
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiiAFBVV95cUxOOGJSWXc5RzEyWHVyaW1Eb1FyX2hLZlVPdWtJRWZCbDNlYXVSa3ZiSXRHZEV6YTVydFRNcXJ5a1dabUxoc3hKdlhRWlJiOXRLckdPNXBCNGVfSlNVUFVxWUxFd3g1SUdVd2N2eEJobEVMcDZLRndUX1ZmVU5xcWNWQWp1SWsxcnZX?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            South Korean retailers turn to overseas markets as domestic growth stalls
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            조선일보 • May 11, 2025, 11:11
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMi3wFBVV95cUxQT21OUUZJZUtxZGo2emc3RjdfLU94ZWVueDhUeVNsMmZoOEVTcWN4YTlxUERPT1p0VERIeWd0QUxyMmN5cVVzdm1sZGQ2VkJVVm5qNVBUcmY3eEc0X3BoRHkzMTBuaHNSWGd4WUhGRjVKWmQ4UzdCcllYSmdpNnlLQVJ4MlpwdUo3QmtlUkhkVHN5aUNoM1pnSTd2VnlOVk81Ny1nOE5sWWhkVzltSW5zSlhFNVJQcXRMSHdlM3Y0bVdtbDJjWmZlc3ZlNnc3T3JwczVsRzhieFVMMUV4cVJn?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Slide in domestic consumption casts shadow over retail&#39;s Q1 earnings
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Korea JoongAng Daily • May 09, 2025, 17:37
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMikwFBVV95cUxOaDR3bVRiRXFMVG9OQmxaUC1UTHFOZ0QyeXgySEc2aEl1OVUwdnNQdWZmazBVOE1qeUswUUszNGthNlpRSW5WeFZSczZCdHUzSnAzWmdwaG1xdmxuQlJuLXNXOVVzdm9uQzFCeEdaOTYwWU02WnQ3dnBhVXJMUVc1cFQ2cDMtNWNkaWo5TVM3UWF5ZVXSAZMBQVVfeXFMTmg0d21UYkVxTFRvTkJsWlAtVExxTmdEMnl4MkhHNmhJdTlVMHZzUHVmZmswVThNanlLMFFLMzRrYTZaUUluVnhWUnM2QnR1M0pwM1pncGhtcXZsbkJSbi1zVzlVc3ZvbkMxQnhHWjk2MFlNNlp0N3ZwYVVyTFFXNXBUNnAzLTVjZGlqOU1TN1FheWVV?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Korea&#39;s convenience store duopoly faces profit decline amid market saturation - CHOSUNBIZ
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Chosun Biz • May 09, 2025, 16:09
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMigAFBVV95cUxOZmxYMnVvYTdFN05aZDFGMW9hd0U5NlI2Mk5tUFdyWnZRUHpKbXpZTzE5VFBPQmh3OXh6V19RbE9UMXJKeFlNSWNQbUU4alFRNlRzVDQyd0hJdHdTYXYyVXR5M2ppSURiaFlMVmx4akRGcS1NTG9MOHVOUGlYa0lLWQ?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            BGF Retail faces challenges as convenience store growth slows in Korea
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Chosun Biz • May 09, 2025, 07:58
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMigAFBVV95cUxOWDlXM2pFTDZLdThWY0hrY2VZUVY0T1RLZEwzajJXcGRUVGdtQzYyQmR6Sk43cjhqQ0JyOHNvM0ZfQ092UXRrQkU3UDAzTzNyeGNSQVA5cTN6cDhnZ2FOampVV29ULUY5d1VhLWNrTlcyQ3FwU2NfbnRpZXRCWUE1MtIBlAFBVV95cUxNc3JQWTRGZHNfTmdqSU9GNURaQ25GbC1OVUxzRGRhSUJaT0owUk1pYTdXQ1JhRmhfLVFsS3I0WXN3XzZfODB3MTVHdFpiT1Z5ZFZwQy1GOEpHV1RsX1dzdTNGM2I2MzBlV0NaNlFYSHJvYnNZc2h2UnlXMUwyWDVHb2pUZGxZWUR0azdmNzRqWkl6dGdf?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Samyang Foods Achieves Blue-Chip Status With Stock Surpassing 1 Million Won
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Chosun Biz • May 12, 2025, 08:05
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiWkFVX3lxTE5Zc3hTQUVaUFlFcm5oR0M5MkFkeHpLcGJkemtrc196Ul83ZTRublF1bVlVWEFpV25xOXBCbk96MVRGakU3aDdUdktWb05ZeFJ1cDMtUTdycXpEZw?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Shinsegae Q1 net falls 40.5 pct on lower demand
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Yonhap News Agency • May 13, 2025, 13:35
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMif0FVX3lxTE9hYmZNWDZZMlRieVcyNFpNR3hzSXdBWUJkSEw2c2RKbG9LNzIwdzluNndXeEYwVFBxalBZSGh0X1g5SU9DUDhZa2RrcDhHdU9DbVJQYnJ6M24zdmpZamJtTDNPTUYxRVVLYmc4Q0R1d3VTVThsRkkxSTJRUTVkNDTSAZMBQVVfeXFMTkFIdHZQSDMtaDgwRENCN3loWnRPeVZOZHh2Q3pMWkNWajh5X0FXeFplZUxiXzNjSUxnb244TGJ1R1REdjN3T3VoTmpRcDg1aVd3Wk12V0wzdTd5ZlBwS2RwMHZFak5icVV2ZVZBQzhkMlptdUdXdE1ZRlhQUEoyNkJ6QjV5bVd3WjdkWHlkUnJsbmIw?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Lotte Shopping reports first-quarter profit up 29% despite declining sales
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Chosun Biz • May 09, 2025, 08:08
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMi4wFBVV95cUxPcjBuUFJDSTBha2xyUXpMd1E5cml4cWo3WWcyc3dsY2F3LUM1SXo3OWV0S2FMd3UzN2VOTl91dHZVTDNlQU80dHZTb1g0N3otM2hsOVZmZ3BDZWFqbVI0UnpoMTFqUWItN1QwMnRSamxaa1VyZ3R1cHJMVXJIaWthalFpY3VBUkkxd0JZUzNCWUFBSkxrS1QwV0tER29sZUROMWN3c2pXVUUzNmZreHptcy1LSTNJNmQ5Y0VNZ1dndlBmc1ZocVJVV3ZzUTFaXzhCQzNDanZtbDVBR25ZSmZ5X3hucw?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Emart reports best quarterly earnings in 8 years on retail innovations
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Korea JoongAng Daily • May 12, 2025, 16:46
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMif0FVX3lxTE5aWWo2OFJlOEdiQ3ctT2duWXVGMlFpLUpHSnU3WG9yRE1WLVN6Q1EyV1JoS213MnEyQmNmM2U2SjJWc0VGR3YyZnlqSkphX1ZnekZOT3ltRUNUQUo4UzZIUmZ2dUxwU1hndHFjVXpsMG43TkZCMGgyN3ZHcE1lR0U?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            COSMAX reports 1st quarter profit rise to 51.3 billion won amid strong growth
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Chosun Biz • May 13, 2025, 15:12
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMi0wFBVV95cUxPRlp4OVpsR0s0TUczOGc0U1dBVm5JRHU5UEZDYXJ0SjZCNGdnczFrM2M0VFdTdlJKWU5QSUZKQ1J6TG93eXgzS1BOcnZfWFFWMUthY0NaSkFpSlRLSktCZU83YlYyWmZaYy1mZGFFRGtfTnFqNTkybk1TMEphRUNoelBIaWM4MEg5cFVZbnc4MUhVVGpQMVA3U05HdTRVamNxb1RsYnJXX2JVVllKQVExZ3M1MkloZEVLb1BEb2VJdkZwM2J0eDhaaUY0TWZGc011N0VF?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Hitejinro to raise beer prices on high raw materials costs
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Korea JoongAng Daily • May 13, 2025, 11:43
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMimwFBVV95cUxQb0tWVV9INlFTYU9RajBuZUJXUWFrNGpveTROMmRYeFl1Sk9oU25hTndTZlQ5ekQ4M2xWMERFRElmZVlaTnpKUzY4WFpjTUVxbXdqdm0wbGluNHVYdXptajhtMHhRZDBwTzRrbHBRaHNYQ2pGV010MHF4cTYzbDBGak9sdkFsWmt5TU90S05EcTFwM2lzWFpjZ0M1Zw?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Korean beauty brand Hanyul to launch at Sephora
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            FashionNetwork USA • May 12, 2025, 01:03
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiywFBVV95cUxOMVgwd1I1dUtKNlVKdzFVVVpzRkJna0FEX2FHX3VTU01kWkRLU194QnlLZzlMZWtKWlhZaFJTQWxDeGN1ZUE5VnRiUGo5dnNaWWRDbDQ0cndHSzVxbzRoVE5aMlJPb3dnOTJpZndfRUtReFV4dzIxWlhSemt2dVhyZjNEZ2lJR0VGSG52dE83Z0VnUWMtb083cUxjaUJkVDg3ZnNZVmo0c3BubWlDaXVFZGpmM0RNTU1RQVYyQzFuY0REVGdSZHduUkdmRdIBywFBVV95cUxOMVgwd1I1dUtKNlVKdzFVVVpzRkJna0FEX2FHX3VTU01kWkRLU194QnlLZzlMZWtKWlhZaFJTQWxDeGN1ZUE5VnRiUGo5dnNaWWRDbDQ0cndHSzVxbzRoVE5aMlJPb3dnOTJpZndfRUtReFV4dzIxWlhSemt2dVhyZjNEZ2lJR0VGSG52dE83Z0VnUWMtb083cUxjaUJkVDg3ZnNZVmo0c3BubWlDaXVFZGpmM0RNTU1RQVYyQzFuY0REVGdSZHduUkdmRQ?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Will Lotte Cinema-Megabox merger revive Korea’s slumping film industry?
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            The Korea Times • May 12, 2025, 07:00
+          </div>
+        </div>
+      </div><div style="border-top:1px solid #e0e0e0; margin:24px 0 16px 0;"></div>
+    <div>
+      <div style="font-size:18px; font-weight:bold; color:#222; margin-bottom:12px; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;">India</div>
+  
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMivAFBVV95cUxQODA1b1J0RnNQbE5UdWw5WlBjeDJIRGNUc1VIV2hrR18tSjF2YW10RDR2S0REM1FIdW5nYUhoZVNvUDdJYldyY1VjYUZ3dFJxbjNhWndmRG15cjFOdWZyRFo2bDNkd0VfNzlnT2REOF9TS0hpRGtNeTJ3TW9vUkZYY3BSUjJBQUNaTi04cXF2eVJzZ29SRXBFelk0Y25BUEJSUHFkYVZuNzZ3M2dfX0FoMExmQ0ZHcXhjdlhiNg?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Tata Consumer to accelerate beverage, food business expansion
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            The Financial Express • May 12, 2025, 02:47
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMi_wFBVV95cUxOZHhoQy1UX3R2eVdmT0wxeThHRnBWYzA1RzBjWUgxWk5qd3I2V0R0d0FaMHFMMWxMT2ltcWNEb3VDM0Z3Wlcwb3kyV0ItaGpYS1llaWc2alpKRHFwX3JndWZZVk9vRkVWRTMtMHZuR3NUYVdoV3Vzb096OEFvV2dvNlJrOEtrbmVvREktbWUwUVdWaWo0QV9IVVJUWlV6MXNheTBRdDUxeEk0eG4tVk1oMlk2VXd1Q3pIVC1iVV9HNE5kNXF4SFVmODl5WVEzblJnNUpNNkdyM2V2WmxjR2JGNTlWZm1vNHpOekNDVVhqUmY1c1R3UXk3S3VqZzV0NkHSAYQCQVVfeXFMTmNFRnZrc2JiX0RfNWFWV1FxeGRJMVFxcDd6WktrSlY1SmZGS2lNWDFUeTlDYktDR3U3d3ZyNEwxdnYwZlhXT2FybXFMaHhVanA4dVRmRVdjN1BIcVBvMzZybXUwNG9XTk5ibXNNWFJuRzdJYnNpa3Mya0piYUYwNXVST0tmWFdFckdNeWR2Z2ZsR2hQVVF0SUxxTHRndngwSk9sWTVrS0dQdURlNTUxRV9ENUMxWnlZNkdrM2F3enE5dVd3b19hUG90UFNaTE41VFkyaUFLbG9KVXhYTGt3X2ItbE4yV0M3TmxXLTFwTndlb2FXajc4d0xFTGlXZVI3MHp0ZVk?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Godrej Consumer’s recovery hinges on premium shift, international play | Stock Market News
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Mint • May 09, 2025, 19:19
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiywFBVV95cUxNcHRvOWhLTUFtMklCWURnX1YwblUzQVZlcmFZV043UW1Kelh3RzVKOUJxRU9qdEpOUVd5TDBLN0lITndQT1dCbmlMQU81VFFRcWNyY0dfYzJhekRRTVZHOUVnUzR1SHdNTTduaEh3T1FFakFmVTlReC1LOFVvdjV0R3EtUC01d09UV1pidTdaaVFEM1R5Uy1lMG0zVHB1X01heEpwaG5GSGVnYlNuRGttc3ZNSnFyRklycDNPbVN6Tkt2aGxCSXJSZHd0MNIB0AFBVV95cUxQMGVra2poM3hwT2dfY3FEYUNUc2xMQmdWSFUxNkJzb3BmbXROSjlDME9Gb1daZ3c1WjlUcTUtbGZRMUQ4NzdrVzNqRHZSMlFSQTJTczdUQjZlM2o3eV9EckF4M3FGbUo5SmRGQTBybjdtajc3SGR5ZXY5elQ5NHhhYlBlbUlfbWR5T2lKbVFxRndWa2Q5b3E1Nm5DM3JySHkwR3dvSmF2WW9OUzBHNW1PWlZaRGpIeUtNdEs2WXZqTjRkbXVianR5SnhtWU1YSnZL?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            United Breweries bets big on premium, eyes double-digit revenue growth in FY26
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            CNBC TV18 • May 09, 2025, 17:03
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMisAFBVV95cUxOYmN5TjNqekZneFEyLU5fUEVQNk1KSmJpSUU2MFNYT2RIMUVzRm54TmdhbEtWZnJDbWpKVFdQUXJheTZzZjkxTEdNYU1DMHRFSE9EcnRWakhRdDA3azUyT2ZHNjlTaGVudXhKWkFoOFBSdnFCaWVHS0g5SXpOMV9NeXRzT0ljcUlIZldIT0R5QVlxTGNmd3dEZlNWTzV5Z3hWa19UVGdWQW4yd01JNE0xWtIBvgFBVV95cUxOWndTaThJSGZqSUNwSExacFdCRkRsMUJ4NkVrMXltUVdOWU9NTkVzdk9sd25MMjAtZlIxZkV0OVl5X1pISFE0RWV6UHAxcEY1OUZvSHh2VTVwamNtV2ZreFhtV0V0VGtlajhhMEJ2Y2tjdE54dUxGaGpCR19lMHJqcnpTRWNySXItM3B1eVJWNjE4ZGdyTlo2UlV6cXNyaHZFQWt3Zjd4NkVQOTlfZ3BTM0o1VFVTVnpUZW5DeDhB?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Danone India expands its toddler nutrition portfolio with DEXOGROW
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            FoodTechBiz • May 14, 2025, 12:10
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiiwFBVV95cUxQbWhHVGFRY2l0TVBkY2FZRC1SZDE5S0lBTWItNmdtUkYyYTFjcmZUZzNBTmRjTnAyQmxSVEV4YkpPY1Z4SEUtckZvZWFyamRnVEMyZGIxQ0N2SWRacDctZTNTTzVrQ21WeElBc0tYT2hMcFNDQnI4YTVaX3VjN2Z4c1hGNVRuZ1pyTnFR?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Dabur To Exit Poorly Performing Products
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            BizzBuzz • May 09, 2025, 10:00
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMi2wFBVV95cUxOWnFadnZaSDQ4ZkI0a2pVb2lONTlFX1AtaDQxNF9xcE1HXzZqWDlUZWRqb215ZXgtd3lKTE1Kay1EODBVTXloQnBINGdKRFhCX0hyVkF2Qm1nY1ItemdEbGJhSTlYcVFaR2xScndXR1dvYUtEU2l0Tk9iMzc3VjBjYkh3SlYtMEhxVG05aXJJOXhuSFk0NW5ZenYwdDNseGhPMklEVWdLNTNnRWdrTUctQmdZbWpjSGNkX0V2LW5QdXlQWmlNN1Y0dG1OTDV0a3ZBRnVqR3pSVENQT2s?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Avenue Supermarts Q4 Results Review: Margin Miss, Rising Costs Prompt Caution From Brokerages
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            MSN • May 12, 2025, 06:15
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMivgFBVV95cUxObEVBcmExVHNKTmxyNWtJTFFQXzZlUFRlMGVQUE9hVkFPTWlEbzdvY3hqRXpocnB4T2tRNlJMQ1JIeE9abi10ZE52cENoVWxySENjZzhvX3lVeWNwaHdSWDA3WkkwU0NScGJaaTZUME43VzBvaXdWNWY5TmxJSjJBU09FT2VVdENnbjYyQzhaR3dyR2haMUNUQTVxRHdJWTFxcmNCTG1PS1RrM1hkTE9ob2VhYU95RlRQdTBiVFhn?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Varun Beverages: Revenue Jumps, Margins Resilient, despite Competitive Pressures
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Moneylife • May 09, 2025, 13:15
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiqgFBVV95cUxNR1J5bU1Xc0tDTUNaM0xQNkE3R3A1bzBEV2YwS3dqeGMxN2FYYTd4dW9RVUtfZ2wxZnF6cjNURnVpc3ZFMzZ3cldIVVFucTd0VWh2eU5ha3Q4WlNBcE1PdHc3NU96ZUg0TzJncHhGbHhyNEdrQjJhcm9KNDFoTlYtTHhZTHJuYnFJdGoxR0NWTkJxMmpJVVI1dUhCLWZqMzJ3QVlYYVRjOGRndw?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Walmart turns to India to avoid high tariffs, but garment workers scarce
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Reuters • May 10, 2025, 01:16
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMi2AFBVV95cUxOOGY5WGcwcGxfcFFTT2YtTW8xb0FFX2xVY09DM0NTMll2bGFKZUxkYlRhRl9naVpxOXU0UWp2X1hkNWJYZS1vbkRpenl5WVJNWkNaQndYcUprYlpYWlNYazVwNC1mVm80SEMzWW5KVGZ3Qmt5WVdoQ2gzdk9MMEVPU0JzeF84YjlBWWtmbE9kOXBYMkp4RHhGaEF1RjN5Z0lvc3RwMTY3U0pqMm5xNmhwWlJMeVFoMnpWMFFtT0dlTTNlX2VPM2lsSGUwUUpHSWk2RG9pZVJLMHU?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Unilever India renews commitment to grown Horlicks and Boost as core portfolio products
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            FoodNavigator-Asia.com • May 14, 2025, 11:33
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMi5gFBVV95cUxNQ0p4U3lnY1ZCSUNNZHdFdmpXV1JyMkNOMDVtcGhHSW5kd0ZWc1k4TW84ektpR2pVM0ltYy0xSzg0aXc5c2VvVjlIUEQySk1BTlR6cTVRSnYtNWZ0T2pWVzBqdEkyLVg1ZV9nMUpvbVJ0bmRYc1VIQXlINVVORllRQm10T2cyNlJDMWZNN1hJTVhpLUdnOF9pQTdTSXZmQ0o3LVY3V3VCV0FHVTB1MjBScFpFWFdPNDVWMDJTSU8tczB2YlB6T1JuN0JGMzNYNnd2amE2YllEYk9oZTU1dk5oSXNnT3hjdw?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            This food giant’s India AI teams are helping R&amp;D, client experience
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Times of India • May 14, 2025, 10:34
+          </div>
+        </div>
+      </div><div style="border-top:1px solid #e0e0e0; margin:24px 0 16px 0;"></div>
+    <div>
+      <div style="font-size:18px; font-weight:bold; color:#222; margin-bottom:12px; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;">Thailand</div>
+  
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiakFVX3lxTFBMZW41eHMtcmptZ1RyUF9xMVYxZkJlZFJXcDdBak15WHJrSEIwRDlhemtBbTJodmozaTNBVWViVE8tOW5zelVjRFpVc0RZTW9GcFlyQ25sNkk5UGFpS1o3b3drcFVRT3J6dVE?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            ThaiBev Reports Mixed Half-Year Performance: Beer Sales Up, Overall Profitability Down
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Nation Thailand • May 10, 2025, 19:16
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMijAFBVV95cUxNaGdGRjdBRDUxN0w0eGFjTVhDNVhWSVFYQjQ3dVdCa2I3TEplUVFTaEhNeDhad1JHaGNyY0xBZVpkQkNlbjFBZWZRZU85LVV0NEI5Y2NWM2FjR3lSRHNaclhqdTIyc1RqOVJlX25td29VbkRiNTE3aWRtcDhHSjFfQVV3RG9rYm9sU2h6RQ?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            CP Axtra Q1 revenue hits B130bn
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Bangkok Post • May 12, 2025, 05:02
+          </div>
+        </div>
+      </div><div style="border-top:1px solid #e0e0e0; margin:24px 0 16px 0;"></div>
+    <div>
+      <div style="font-size:18px; font-weight:bold; color:#222; margin-bottom:12px; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;">Vietnam</div>
+  
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiakFVX3lxTFByQUZzbDhULTdMTElLQjJJTU1sLVFMSGpBRnBUZEJ6ckFLODZLcmVKenhFa0NrbHJ4UmVteVhmQ210bUl0STBoNG5QczhKWXZ4S2NuWF9HS1pmdklra2lnek1sUW1zTzc3bkE?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            How do you compete with Chinese e-commerce giants? A Vietnamese company is deploying housewives
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Rest of World • May 09, 2025, 18:02
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMijwFBVV95cUxNUEwxVE5BMG5DRVZtR0xIY2tHNkFWc3FuUjFkMFVXRHBkUlc4LWExbXpxZmdvbld6N1ZoWjRPeFZkanFDRGxGVmpzUjNZdXhDZXM1MFo5S2sxZWNxLWFGNkVtc1pyVVA0dWtuRnBiNmRCWkVyZ1lWMXduRXdveTQ0MWxicFE1NjA3Ty1aTGhLSQ?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Aeon eyes eightfold expansion in Vietnam by 2030
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Inside Retail Asia • May 14, 2025, 10:24
+          </div>
+        </div>
+      </div><div style="border-top:1px solid #e0e0e0; margin:24px 0 16px 0;"></div>
+    <div>
+      <div style="font-size:18px; font-weight:bold; color:#222; margin-bottom:12px; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;">Indonesia</div>
+  
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMirgFBVV95cUxNSG5UNF9HVzU5WG40Nmk1bEVYN1UzUTJwNHY2Z0NzaVE1czBxdjdFTmhYZVpZeDRPQVV3RGtaUDR3STFzQzRzc2RnMmYwd1Ntckt5cV9BMF9YOGNNLXk3djhVekNsb0VuQXhCZDFTM3pFRnBjVGUxRVVXWkRMd29ZdmV2elV6bFpwMURoaEo3YXlBZWJXRF9ERnR1RUI2MHlXT2daOS1SbThkTnhYVXc?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Maybank sees Grab-Gojek potential merge faces regulator risk in Singapore
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            TNGlobal • May 09, 2025, 13:55
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMif0FVX3lxTE1XVVF3dm01czhBeHktTnAtenpZa29zd080c3NLSHhtbm1vY2hSUGFJOE5VZWNYZ0RhNXhmVEctamtMdkZKTFZKU19BVWJLbUUteXlENGttUWZBS2FnR3JQOW5RVmotdjBHOElnR21UME9sNGNwRjBEWWIyTlhzTlU?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Korean supermarkets GS Retail and Lotte Shopping struggle in Indonesia market
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Chosun Biz • May 14, 2025, 05:00
+          </div>
+        </div>
+      </div><div style="border-top:1px solid #e0e0e0; margin:24px 0 16px 0;"></div>
+    <div>
+      <div style="font-size:18px; font-weight:bold; color:#222; margin-bottom:12px; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;">Malaysia</div>
+  
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMirAFBVV95cUxPUk1UNUVTdkxocVh3MDJhTW8wVnJqRks3Yl85LXdDVGU5RFRheUVPSHNXNTJOOHp6b1JIbEtXNnd1RnM4TTltLWZTaXI1bDRpajBOZnRZMXVaLU1XNE1NbU1pYUg2OVlER3hER05rczVJQWpZQmszYjVQWGpBNzh5X3RwNW9PY2xzU0NEblcxRFVtcExuU2ZzOTl0WG90bU1lNWdSdl80b2Z4emVT?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            United Plantations set on remaining competitive
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            thestar.com.my • May 12, 2025, 08:04
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMitAFBVV95cUxNZlUybEdncWFKUW5idno5OXlucEllVm5WcHhzZUhVRjNNcWxFOFBSdUdNaU5zZ0YzbFMxUzR1UVA0U05TenRUcnBOaUwzbUhIVG55Slp0TDhrNXAwdFRjdXlJazFLRGVLcmc3OUhhTVBUVWg5dWFSbXNJdjBpMWpXUFNPa0NsamtidE9CaG5iODBYUWEzaGtMbG45MWFhVGk4VG4xSHdkSHhvOVA4WjBpX2VITXU?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Non-Core Assets Could Be SD Guthrie&#39;s Key Driver For Future Upside&quot; CGS
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            BusinessToday Malaysia • May 09, 2025, 16:51
+          </div>
+        </div>
+      
+        <div style="margin-bottom: 14px;">
+          <a href="https://news.google.com/rss/articles/CBMiygFBVV95cUxPRGFxVTlpYjFhcEhJNzFtQzgxU05rdG80NloxSzB4eGRURXNVYWVNRXBWeWEzcnVEOHNCQkhTQ3hfRmd6X2tEcmh4aGM2RkwwLVhtd3JmMlU3VHdISnh1X3NJU0NIYkRnWGlzMzEwbXdObUd4d2F2VnJIVW5VczBPVG1SMlJydlhJbGFsd19mV2FHS2gtdC1iNEFVbkdCbXBBX1FrYVExbWR4YS05ZEVNSk9fS2ljcllvOFJfcWJBTTRSWXhnUFdvTHFn?oc=5" style="font-size:14px; font-weight:bold; color:#0a4b87; text-decoration:none; font-family: 'EB Garamond', Garamond, 'Garamond Premier Pro', serif;" target="_blank">
+            Bursa scrutinises Genting Malaysia’s buyout of loss-making US unit
+          </a>
+          <div style="font-size:11px; color:#666; margin-top:3px; font-family: Arial, sans-serif;">
+            Free Malaysia Today • May 09, 2025, 20:26
+          </div>
+        </div>
+      </div></div>
+</body>
+</html>
